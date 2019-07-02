@@ -1,10 +1,10 @@
 extern crate clap;
 
 use clap::{App, Arg};
+use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use serde_json::Value;
 
 fn main() {
     let args = App::new("classrom-helper")
@@ -40,8 +40,42 @@ fn main() {
     let org = args.value_of("org").unwrap_or("physics-data");
     let prefix = args.value_of("prefix").unwrap_or("self-intro");
     let students = args.value_of("students").unwrap_or("students.csv");
+    let template = args.value_of("template").unwrap_or("tpl_self-introduction");
+
+    if !Path::new("workspace").join(template).join(".git").exists() {
+        println!("cloning {}", template);
+        let output = Command::new("git")
+            .current_dir("workspace")
+            .arg("clone")
+            .arg(format!("git@github.com:{}/{}.git", org, template))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap();
+        if output.success() {
+            println!("cloning {:?} done", template);
+        } else {
+            println!("cloning {:?} failed", template);
+        }
+    }
+
+    println!("pulling {}", template);
+    let output = Command::new("git")
+        .current_dir(format!("workspace/{}", template))
+        .arg("pull")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .unwrap();
+    if output.success() {
+        println!("cloning {:?} done", template);
+    } else {
+        println!("pulling {:?} failed", template);
+    }
 
     let mut rdr = csv::Reader::from_reader(File::open(students).unwrap());
+    let mut wtr = csv::Writer::from_writer(File::create("results.csv").unwrap());
+    wtr.write_record(&["学号","姓名","GitHub","成绩"]).unwrap();
     for row in rdr.records() {
         let record = row.unwrap();
         let github = record.get(2).unwrap();
@@ -66,10 +100,12 @@ fn main() {
                 println!("cloning {:?} failed", output);
             }
         } else {
-            println!("pulling {}", github);
+            println!("fetching {}", github);
             let output = Command::new("git")
                 .current_dir(format!("workspace/{}-{}", prefix, github))
-                .arg("pull")
+                .arg("fetch")
+                .arg("origin")
+                .arg("master")
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .status()
@@ -77,10 +113,37 @@ fn main() {
             if output.success() {
                 grade = true;
             } else {
-                println!("pulling {:?} failed", output);
+                println!("fetching {:?} failed", output);
             }
         }
+
+
         if grade {
+            let output = Command::new("git")
+                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .arg("reset")
+                .arg("origin/master")
+                .arg("--hard")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .unwrap();
+            if !output.success() {
+                println!("reseting {:?} failed", github);
+            }
+
+            let mut options = fs_extra::file::CopyOptions::new();
+            options.overwrite = true;
+            fs_extra::file::copy(
+                Path::new("workspace").join(template).join("grade.py"),
+                Path::new("workspace")
+                    .join(format!("{}-{}", prefix, github))
+                    .join("grade.py"),
+                &options,
+            )
+            .unwrap();
+
+
             println!("grading {}", github);
             let output = Command::new("python3")
                 .current_dir(format!("workspace/{}-{}", prefix, github))
@@ -92,7 +155,10 @@ fn main() {
             let res = output.wait_with_output().unwrap();
             let ans = String::from_utf8_lossy(&res.stdout);
             let value: Value = serde_json::from_str(&ans).unwrap();
-            println!("{:?}", value);
+            let grade = value.get("grade").unwrap().as_i64().unwrap();
+            println!("grade {:?}", grade);
+            wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), &format!("{}", grade)]).unwrap();
         }
     }
+    wtr.flush().unwrap();
 }
