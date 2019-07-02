@@ -35,17 +35,26 @@ fn main() {
                 .help("Path to students csv, e.g. students.csv")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("workspace")
+                .short("w")
+                .long("workspace")
+                .value_name("workspace")
+                .help("Path to workspace csv, e.g. workspace")
+                .takes_value(true),
+        )
         .get_matches();
 
     let org = args.value_of("org").unwrap_or("physics-data");
     let prefix = args.value_of("prefix").unwrap_or("self-intro");
     let students = args.value_of("students").unwrap_or("students.csv");
     let template = args.value_of("template").unwrap_or("tpl_self-introduction");
+    let workspace = args.value_of("workspace").unwrap_or("workspace");
 
-    if !Path::new("workspace").join(template).join(".git").exists() {
+    if !Path::new(workspace).join(template).join(".git").exists() {
         println!("cloning {}", template);
         let output = Command::new("git")
-            .current_dir("workspace")
+            .current_dir(workspace)
             .arg("clone")
             .arg(format!("git@github.com:{}/{}.git", org, template))
             .stdout(Stdio::null())
@@ -61,7 +70,7 @@ fn main() {
 
     println!("pulling {}", template);
     let output = Command::new("git")
-        .current_dir(format!("workspace/{}", template))
+        .current_dir(format!("{}/{}", workspace, template))
         .arg("pull")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -80,14 +89,14 @@ fn main() {
         let record = row.unwrap();
         let github = record.get(2).unwrap();
         let mut grade = false;
-        if !Path::new("workspace")
+        if !Path::new(workspace)
             .join(format!("{}-{}", prefix, github))
             .join(".git")
             .exists()
         {
             println!("cloning {}", github);
             let output = Command::new("git")
-                .current_dir("workspace")
+                .current_dir(workspace)
                 .arg("clone")
                 .arg(format!("git@github.com:{}/{}-{}.git", org, prefix, github))
                 .stdout(Stdio::null())
@@ -102,7 +111,7 @@ fn main() {
         } else {
             println!("fetching {}", github);
             let output = Command::new("git")
-                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .current_dir(format!("{}/{}-{}", workspace, prefix, github))
                 .arg("fetch")
                 .arg("origin")
                 .arg("master")
@@ -120,7 +129,7 @@ fn main() {
 
         if grade {
             let output = Command::new("git")
-                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .current_dir(format!("{}/{}-{}", workspace, prefix, github))
                 .arg("reset")
                 .arg("origin/master")
                 .arg("--hard")
@@ -135,8 +144,8 @@ fn main() {
             let mut options = fs_extra::file::CopyOptions::new();
             options.overwrite = true;
             fs_extra::file::copy(
-                Path::new("workspace").join(template).join("grade.py"),
-                Path::new("workspace")
+                Path::new(workspace).join(template).join("grade.py"),
+                Path::new(workspace)
                     .join(format!("{}-{}", prefix, github))
                     .join("grade.py"),
                 &options,
@@ -146,7 +155,7 @@ fn main() {
 
             println!("grading {}", github);
             let output = Command::new("python3")
-                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .current_dir(format!("{}/{}-{}", workspace, prefix, github))
                 .arg("grade.py")
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
@@ -158,6 +167,9 @@ fn main() {
             let grade = value.get("grade").unwrap().as_i64().unwrap();
             println!("grade {:?}", grade);
             wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), &format!("{}", grade)]).unwrap();
+        } else {
+            println!("unable to grade {}", github);
+            wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), "N/A"]).unwrap();
         }
     }
     wtr.flush().unwrap();
