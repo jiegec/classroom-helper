@@ -16,7 +16,8 @@ fn main() {
                 .short("o")
                 .long("organization")
                 .value_name("org")
-                .help("GitHub organization name, e.g. physics-data")
+                .help("GitHub organization name")
+                .default_value("physics-data")
                 .takes_value(true),
         )
         .arg(
@@ -24,7 +25,8 @@ fn main() {
                 .short("p")
                 .long("prefix")
                 .value_name("prefix")
-                .help("GitHub repo prefix, e.g. self-intro")
+                .help("GitHub repo prefix")
+                .default_value("self-intro")
                 .takes_value(true),
         )
         .arg(
@@ -32,7 +34,8 @@ fn main() {
                 .short("s")
                 .long("students")
                 .value_name("students")
-                .help("Path to students csv, e.g. students.csv")
+                .help("Path to students csv")
+                .default_value("students.csv")
                 .takes_value(true),
         )
         .arg(
@@ -40,16 +43,32 @@ fn main() {
                 .short("w")
                 .long("workspace")
                 .value_name("workspace")
-                .help("Path to workspace csv, e.g. workspace")
+                .help("Path to workspace csv")
+                .default_value("workspace")
                 .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("template")
+                .short("t")
+                .long("template")
+                .value_name("template")
+                .help("Template repo slug")
+                .default_value("tpl_self-introduction")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("fetch")
+                .short("f")
+                .long("fetch")
+                .help("Fetch new commits or not"),
         )
         .get_matches();
 
-    let org = args.value_of("org").unwrap_or("physics-data");
-    let prefix = args.value_of("prefix").unwrap_or("self-intro");
-    let students = args.value_of("students").unwrap_or("students.csv");
-    let template = args.value_of("template").unwrap_or("tpl_self-introduction");
-    let workspace = args.value_of("workspace").unwrap_or("workspace");
+    let org = args.value_of("organization").unwrap();
+    let prefix = args.value_of("prefix").unwrap();
+    let students = args.value_of("students").unwrap();
+    let template = args.value_of("template").unwrap();
+    let workspace = args.value_of("workspace").unwrap();
 
     if !Path::new(workspace).join(template).join(".git").exists() {
         println!("cloning {}", template);
@@ -109,20 +128,24 @@ fn main() {
                 println!("cloning {:?} failed", output);
             }
         } else {
-            println!("fetching {}", github);
-            let output = Command::new("git")
-                .current_dir(format!("{}/{}-{}", workspace, prefix, github))
-                .arg("fetch")
-                .arg("origin")
-                .arg("master")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .unwrap();
-            if output.success() {
-                grade = true;
+            if args.occurrences_of("fetch") > 0 {
+                println!("fetching {}", github);
+                let output = Command::new("git")
+                    .current_dir(format!("{}/{}-{}", workspace, prefix, github))
+                    .arg("fetch")
+                    .arg("origin")
+                    .arg("master")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .unwrap();
+                if output.success() {
+                    grade = true;
+                } else {
+                    println!("fetching {:?} failed", output);
+                }
             } else {
-                println!("fetching {:?} failed", output);
+                grade = true;
             }
         }
 
