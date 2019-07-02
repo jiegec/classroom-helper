@@ -2,6 +2,7 @@ extern crate clap;
 
 use clap::{App, Arg};
 use std::fs::File;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 fn main() {
@@ -43,23 +44,52 @@ fn main() {
     for row in rdr.records() {
         let record = row.unwrap();
         let github = record.get(2).unwrap();
-        let output = Command::new("git")
-            .current_dir("workspace")
-            .arg("clone")
-            .arg(format!("git@github.com:{}/{}-{}.git", org, prefix, github))
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .unwrap();
-        println!("{:?}", output);
-        let output = Command::new("git")
-            .current_dir(format!("workspace/{}-{}", prefix, github))
-            .arg("pull")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .unwrap();
-        println!("{:?}", output);
+        let mut grade = false;
+        if !Path::new("workspace")
+            .join(format!("{}-{}", prefix, github))
+            .join(".git")
+            .exists()
+        {
+            println!("cloning {}", github);
+            let output = Command::new("git")
+                .current_dir("workspace")
+                .arg("clone")
+                .arg(format!("git@github.com:{}/{}-{}.git", org, prefix, github))
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .unwrap();
+            if output.success() {
+                grade = true;
+            } else {
+                println!("cloning {:?} failed", output);
+            }
+        } else {
+            println!("pulling {}", github);
+            let output = Command::new("git")
+                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .arg("pull")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .unwrap();
+            if output.success() {
+                grade = true;
+            } else {
+                println!("pulling {:?} failed", output);
+            }
+        }
+        if grade {
+            println!("grading {}", github);
+            let output = Command::new("python3")
+                .current_dir(format!("workspace/{}-{}", prefix, github))
+                .arg("grade.py")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::null())
+                .status()
+                .unwrap();
+            println!("{:?}", output);
+        }
     }
 
     println!("Hello, world!");
