@@ -4,6 +4,7 @@ use clap::{App, Arg};
 use std::fs::File;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use serde_json::Value;
 
 fn main() {
     let args = App::new("classrom-helper")
@@ -84,13 +85,14 @@ fn main() {
             let output = Command::new("python3")
                 .current_dir(format!("workspace/{}-{}", prefix, github))
                 .arg("grade.py")
-                .stdout(Stdio::inherit())
+                .stdout(Stdio::piped())
                 .stderr(Stdio::null())
-                .status()
+                .spawn()
                 .unwrap();
-            println!("{:?}", output);
+            let res = output.wait_with_output().unwrap();
+            let ans = String::from_utf8_lossy(&res.stdout);
+            let value: Value = serde_json::from_str(&ans).unwrap();
+            println!("{:?}", value);
         }
     }
-
-    println!("Hello, world!");
 }
