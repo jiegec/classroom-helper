@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate clap;
+extern crate config;
 
 use clap::{App, AppSettings, Arg};
 use serde_json::Value;
@@ -20,7 +21,6 @@ fn main() {
                 .long("organization")
                 .value_name("org")
                 .help("GitHub organization name")
-                .default_value("physics-data")
                 .takes_value(true),
         )
         .arg(
@@ -29,7 +29,6 @@ fn main() {
                 .long("prefix")
                 .value_name("prefix")
                 .help("GitHub repo prefix")
-                .default_value("self-intro")
                 .takes_value(true),
         )
         .arg(
@@ -38,7 +37,6 @@ fn main() {
                 .long("students")
                 .value_name("students")
                 .help("Path to students csv")
-                .default_value("students.csv")
                 .takes_value(true),
         )
         .arg(
@@ -47,7 +45,6 @@ fn main() {
                 .long("workspace")
                 .value_name("workspace")
                 .help("Path to workspace csv")
-                .default_value("workspace")
                 .takes_value(true),
         )
         .arg(
@@ -56,7 +53,6 @@ fn main() {
                 .long("template")
                 .value_name("template")
                 .help("Template repo slug")
-                .default_value("tpl_self-introduction")
                 .takes_value(true),
         )
         .arg(
@@ -71,7 +67,6 @@ fn main() {
                 .long("result")
                 .value_name("result")
                 .help("Result csv path")
-                .default_value("results.csv")
                 .takes_value(true),
         )
         .arg(
@@ -80,23 +75,63 @@ fn main() {
                 .long("grader")
                 .value_name("grader")
                 .help("Grader py name")
-                .default_value("grade.py")
                 .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("config")
+                .value_name("config")
+                .help("Config file"),
         )
         .get_matches();
 
-    let org = args.value_of("organization").unwrap();
-    let prefix = args.value_of("prefix").unwrap();
-    let students = args.value_of("students").unwrap();
-    let template = args.value_of("template").unwrap();
-    let workspace = args.value_of("workspace").unwrap();
-    let results = args.value_of("result").unwrap();
-    let grader = args.value_of("grader").unwrap();
+    let mut settings = config::Config::default();
 
-    if !Path::new(workspace).join(template).join(".git").exists() {
+    // Precedence
+    // Commandline > Environment > Config
+
+    if let Some(conf) = args.value_of("config") {
+        settings.merge(config::File::with_name(conf)).unwrap();
+    }
+    settings
+        .merge(config::Environment::with_prefix("CLASSROOM"))
+        .unwrap();
+
+    // Merge command line args
+    let mut overwrite = false;
+    let mut clap_args = config::Config::default();
+    for key in [
+        "organization",
+        "prefix",
+        "students",
+        "template",
+        "workspace",
+        "result",
+        "grader",
+    ]
+    .into_iter()
+    {
+        if let Some(value) = args.value_of(key) {
+            clap_args.set(*key, value).unwrap();
+            overwrite = true;
+        }
+    }
+
+    if overwrite {
+        settings.merge(clap_args).unwrap();
+    }
+
+    let org = settings.get_str("organization").unwrap();
+    let prefix = settings.get_str("prefix").unwrap();
+    let students = settings.get_str("students").unwrap();
+    let template = settings.get_str("template").unwrap();
+    let workspace = settings.get_str("workspace").unwrap();
+    let results = settings.get_str("result").unwrap();
+    let grader = settings.get_str("grader").unwrap();
+
+    if !Path::new(&workspace).join(&template).join(".git").exists() {
         println!("cloning {}", template);
         let output = Command::new("git")
-            .current_dir(workspace)
+            .current_dir(&workspace)
             .arg("clone")
             .arg(format!("git@github.com:{}/{}.git", org, template))
             .stdout(Stdio::null())
@@ -112,7 +147,7 @@ fn main() {
 
     println!("pulling {}", template);
     let output = Command::new("git")
-        .current_dir(format!("{}/{}", workspace, template))
+        .current_dir(format!("{}/{}", &workspace, template))
         .arg("pull")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -134,14 +169,14 @@ fn main() {
         let record = row.unwrap();
         let github = record.get(2).unwrap();
         let mut grade = false;
-        if !Path::new(workspace)
+        if !Path::new(&workspace)
             .join(format!("{}-{}", prefix, github))
             .join(".git")
             .exists()
         {
             println!("cloning {}", github);
             let output = Command::new("git")
-                .current_dir(workspace)
+                .current_dir(&workspace)
                 .arg("clone")
                 .arg(format!("git@github.com:{}/{}-{}.git", org, prefix, github))
                 .stdout(Stdio::null())
@@ -177,7 +212,7 @@ fn main() {
 
         if grade {
             let output = Command::new("git")
-                .current_dir(format!("{}/{}-{}", workspace, prefix, github))
+                .current_dir(format!("{}/{}-{}", &workspace, prefix, github))
                 .arg("reset")
                 .arg("origin/master")
                 .arg("--hard")
@@ -192,10 +227,10 @@ fn main() {
             let mut options = fs_extra::file::CopyOptions::new();
             options.overwrite = true;
             fs_extra::file::copy(
-                Path::new(workspace).join(template).join(grader),
-                Path::new(workspace)
+                Path::new(&workspace).join(&template).join(&grader),
+                Path::new(&workspace)
                     .join(format!("{}-{}", prefix, github))
-                    .join(grader),
+                    .join(&grader),
                 &options,
             )
             .unwrap();
@@ -203,7 +238,7 @@ fn main() {
             println!("grading {}", github);
             let output = Command::new("python3")
                 .current_dir(format!("{}/{}-{}", workspace, prefix, github))
-                .arg(grader)
+                .arg(&grader)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()
