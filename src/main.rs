@@ -187,7 +187,7 @@ fn main() {
             let res = output.wait_with_output().unwrap();
             let ans = String::from_utf8_lossy(&res.stdout);
             let value: Value = serde_json::from_str(&ans).unwrap();
-            let grade = value.get("grade").unwrap().as_i64().unwrap();
+            let grade = value.get("grade").unwrap().as_f64().unwrap();
             println!("grade {:?}", grade);
             wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), &format!("{}", grade)]).unwrap();
         } else {
