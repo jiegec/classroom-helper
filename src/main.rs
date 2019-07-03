@@ -1,18 +1,19 @@
 #[macro_use]
 extern crate clap;
 
-use clap::{App, Arg};
+use clap::{App, AppSettings, Arg};
 use serde_json::Value;
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::io::Write;
 
 fn main() {
-    let args = App::new("classrom-helper")
+    let args = App::new("classroom-helper")
         .about("GitHub Classroom helper")
         .author(crate_authors!())
         .version(crate_version!())
+        .setting(AppSettings::ColoredHelp)
         .arg(
             Arg::with_name("organization")
                 .short("o")
@@ -64,6 +65,24 @@ fn main() {
                 .long("fetch")
                 .help("Fetch new commits or not"),
         )
+        .arg(
+            Arg::with_name("result")
+                .short("r")
+                .long("result")
+                .value_name("result")
+                .help("Result csv path")
+                .default_value("results.csv")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("grader")
+                .short("g")
+                .long("grader")
+                .value_name("grader")
+                .help("Grader py name")
+                .default_value("grade.py")
+                .takes_value(true),
+        )
         .get_matches();
 
     let org = args.value_of("organization").unwrap();
@@ -71,6 +90,8 @@ fn main() {
     let students = args.value_of("students").unwrap();
     let template = args.value_of("template").unwrap();
     let workspace = args.value_of("workspace").unwrap();
+    let results = args.value_of("result").unwrap();
+    let grader = args.value_of("grader").unwrap();
 
     if !Path::new(workspace).join(template).join(".git").exists() {
         println!("cloning {}", template);
@@ -104,10 +125,11 @@ fn main() {
     }
 
     let mut rdr = csv::Reader::from_reader(File::open(students).unwrap());
-    let mut results = File::create("results.csv").unwrap();
+    let mut results = File::create(results).unwrap();
     results.write(&[0xef, 0xbb, 0xbf]).unwrap();
     let mut wtr = csv::Writer::from_writer(results);
-    wtr.write_record(&["学号","姓名","GitHub","成绩"]).unwrap();
+    wtr.write_record(&["学号", "姓名", "GitHub", "成绩"])
+        .unwrap();
     for row in rdr.records() {
         let record = row.unwrap();
         let github = record.get(2).unwrap();
@@ -153,7 +175,6 @@ fn main() {
             }
         }
 
-
         if grade {
             let output = Command::new("git")
                 .current_dir(format!("{}/{}-{}", workspace, prefix, github))
@@ -171,19 +192,18 @@ fn main() {
             let mut options = fs_extra::file::CopyOptions::new();
             options.overwrite = true;
             fs_extra::file::copy(
-                Path::new(workspace).join(template).join("grade.py"),
+                Path::new(workspace).join(template).join(grader),
                 Path::new(workspace)
                     .join(format!("{}-{}", prefix, github))
-                    .join("grade.py"),
+                    .join(grader),
                 &options,
             )
             .unwrap();
 
-
             println!("grading {}", github);
             let output = Command::new("python3")
                 .current_dir(format!("{}/{}-{}", workspace, prefix, github))
-                .arg("grade.py")
+                .arg(grader)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()
@@ -193,10 +213,22 @@ fn main() {
             let value: Value = serde_json::from_str(&ans).unwrap();
             let grade = value.get("grade").unwrap().as_f64().unwrap();
             println!("grade {:?}", grade);
-            wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), &format!("{}", grade)]).unwrap();
+            wtr.write_record(&[
+                record.get(0).unwrap(),
+                record.get(1).unwrap(),
+                record.get(2).unwrap(),
+                &format!("{}", grade),
+            ])
+            .unwrap();
         } else {
             println!("unable to grade {}", github);
-            wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), "N/A"]).unwrap();
+            wtr.write_record(&[
+                record.get(0).unwrap(),
+                record.get(1).unwrap(),
+                record.get(2).unwrap(),
+                "N/A",
+            ])
+            .unwrap();
         }
         wtr.flush().unwrap();
     }
