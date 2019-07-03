@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::io::Write;
 
 fn main() {
     let args = App::new("classrom-helper")
@@ -102,7 +103,9 @@ fn main() {
     }
 
     let mut rdr = csv::Reader::from_reader(File::open(students).unwrap());
-    let mut wtr = csv::Writer::from_writer(File::create("results.csv").unwrap());
+    let mut results = File::create("results.csv").unwrap();
+    results.write(&[0xef, 0xbb, 0xbf]).unwrap();
+    let mut wtr = csv::Writer::from_writer(results);
     wtr.write_record(&["学号","姓名","GitHub","成绩"]).unwrap();
     for row in rdr.records() {
         let record = row.unwrap();
@@ -194,6 +197,7 @@ fn main() {
             println!("unable to grade {}", github);
             wtr.write_record(&[record.get(0).unwrap(), record.get(1).unwrap(), record.get(2).unwrap(), "N/A"]).unwrap();
         }
+        wtr.flush().unwrap();
     }
     wtr.flush().unwrap();
 }
