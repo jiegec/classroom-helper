@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate clap;
 
 use clap::{App, Arg};
@@ -9,9 +10,9 @@ use std::io::Write;
 
 fn main() {
     let args = App::new("classrom-helper")
-        .version("0.1.0")
-        .author("Jiajie Chen <noc@jiegec.ac.cn>")
         .about("GitHub Classroom helper")
+        .author(crate_authors!())
+        .version(crate_version!())
         .arg(
             Arg::with_name("organization")
                 .short("o")
