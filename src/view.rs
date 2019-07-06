@@ -7,7 +7,7 @@ use tui::backend::Backend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::terminal::Frame;
-use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
+use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text, Widget};
 use tui::Terminal;
 
 pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
@@ -25,33 +25,102 @@ pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
         .margin(1)
         .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
         .split(chunks_virt[0]);
-    Block::default()
-        .title("Students")
-        .borders(Borders::ALL)
-        .border_style(if let UiWidget::Student = model.current {
-            highlighted_style
+
+    // Students
+    let mut students = Vec::new();
+    let highlighted_row_style = Style::default().bg(Color::Gray);
+    for (index, stu) in model
+        .students
+        .iter()
+        .enumerate()
+        .skip(model.student_render_start)
+    {
+        let blackbox = if let Some(grade) = stu.blackbox {
+            grade.to_string()
         } else {
-            normal_style
-        })
-        .title_style(if let UiWidget::Student = model.current {
-            highlighted_style
+            format!("N/A")
+        };
+        let whitebox = if let Some(grade) = stu.whitebox {
+            grade.to_string()
         } else {
-            normal_style
-        })
-        .render(&mut f, chunks_left[0]);
-    Block::default()
-        .title("Status")
-        .borders(Borders::ALL)
-        .border_style(if let UiWidget::Status = model.current {
-            highlighted_style
+            format!("N/A")
+        };
+        if Some(index) == model.student_select {
+            students.push(Row::StyledData(
+                vec![
+                    stu.student_id.clone(),
+                    stu.name.clone(),
+                    stu.github.clone(),
+                    blackbox,
+                    whitebox,
+                ]
+                .into_iter(),
+                highlighted_row_style,
+            ))
         } else {
-            normal_style
-        })
-        .title_style(if let UiWidget::Status = model.current {
-            highlighted_style
-        } else {
-            normal_style
-        })
+            students.push(Row::Data(
+                vec![
+                    stu.student_id.clone(),
+                    stu.name.clone(),
+                    stu.github.clone(),
+                    blackbox,
+                    whitebox,
+                ]
+                .into_iter(),
+            ))
+        }
+    }
+
+    Table::new(
+        [
+            "Student Id",
+            "Name",
+            "GitHub",
+            "Blackbox Grade",
+            "Whitebox Grade",
+        ]
+        .into_iter(),
+        students.into_iter(),
+    )
+    .block(
+        Block::default()
+            .title("Students")
+            .borders(Borders::ALL)
+            .border_style(if let UiWidget::Student = model.current {
+                highlighted_style
+            } else {
+                normal_style
+            })
+            .title_style(if let UiWidget::Student = model.current {
+                highlighted_style
+            } else {
+                normal_style
+            }),
+    )
+    .widths(&[15, 10, 10, 15, 15])
+    .render(&mut f, chunks_left[0]);
+
+    // Status
+    let mut status = Vec::new();
+    for line in model.status.iter() {
+        status.push(Text::raw(line.clone()));
+    }
+    Paragraph::new(status.iter())
+        .block(
+            Block::default()
+                .title("Status")
+                .borders(Borders::ALL)
+                .border_style(if let UiWidget::Status = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                })
+                .title_style(if let UiWidget::Status = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                }),
+        )
         .render(&mut f, chunks_left[1]);
 
     let chunks_right = Layout::default()
