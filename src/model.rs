@@ -8,7 +8,6 @@ pub enum UiWidget {
     Status,
     Log,
     Diff,
-    Config,
 }
 
 pub struct Student {
@@ -103,7 +102,6 @@ impl Model {
                     UiWidget::Status => UiWidget::Status,
                     UiWidget::Log => UiWidget::Student,
                     UiWidget::Diff => UiWidget::Student,
-                    UiWidget::Config => UiWidget::Status,
                 };
             }
             Key::Char('J') => {
@@ -111,8 +109,7 @@ impl Model {
                     UiWidget::Student => UiWidget::Status,
                     UiWidget::Status => UiWidget::Status,
                     UiWidget::Log => UiWidget::Diff,
-                    UiWidget::Diff => UiWidget::Config,
-                    UiWidget::Config => UiWidget::Config,
+                    UiWidget::Diff => UiWidget::Diff,
                 };
             }
             Key::Char('K') => {
@@ -121,16 +118,14 @@ impl Model {
                     UiWidget::Status => UiWidget::Student,
                     UiWidget::Log => UiWidget::Log,
                     UiWidget::Diff => UiWidget::Log,
-                    UiWidget::Config => UiWidget::Diff,
                 };
             }
             Key::Char('L') => {
                 self.current = match self.current {
                     UiWidget::Student => UiWidget::Log,
-                    UiWidget::Status => UiWidget::Config,
+                    UiWidget::Status => UiWidget::Diff,
                     UiWidget::Log => UiWidget::Log,
                     UiWidget::Diff => UiWidget::Diff,
-                    UiWidget::Config => UiWidget::Config,
                 };
             }
             Key::Char('j') => {
@@ -148,7 +143,7 @@ impl Model {
                                 if self.students.len() > current + 1 {
                                     Some(current + 1)
                                 } else {
-                                    Some(self.students.len() - 1)
+                                    Some(0)
                                 }
                             }
                         }
@@ -171,7 +166,7 @@ impl Model {
                                 if current > 0 {
                                     Some(current - 1)
                                 } else {
-                                    Some(0)
+                                    Some(self.students.len() - 1)
                                 }
                             }
                         }
@@ -180,14 +175,6 @@ impl Model {
                 };
             }
             _ => {}
-        }
-
-        if let Some(select) = self.student_select {
-            if select < self.student_render_start {
-                self.student_render_start = select;
-            } else if select > self.student_render_start + 10 {
-                self.student_render_start = select - 10;
-            }
         }
     }
 }

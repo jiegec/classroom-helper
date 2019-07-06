@@ -36,7 +36,7 @@ fn main() -> Result<(), io::Error> {
 
     loop {
         terminal.draw(|mut f| {
-            view::draw(&model, &mut f);
+            view::draw(&mut model, &mut f);
         })?;
 
         match events.next().unwrap() {

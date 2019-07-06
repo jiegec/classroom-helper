@@ -10,7 +10,7 @@ use tui::terminal::Frame;
 use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text, Widget};
 use tui::Terminal;
 
-pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
+pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
     let normal_style = Style::default();
 
@@ -23,18 +23,28 @@ pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
     let chunks_left = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
+        .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref())
         .split(chunks_virt[0]);
 
     // Students
+    if let Some(select) = model.student_select {
+        if select < model.student_render_start {
+            model.student_render_start = select;
+        } else if select > model.student_render_start + (chunks_left[0].height as usize - 6) {
+            model.student_render_start = select - (chunks_left[0].height as usize - 6);
+        }
+    }
     let mut students = Vec::new();
     let highlighted_row_style = Style::default().bg(Color::Gray);
+    let mut github_width = 10;
     for (index, stu) in model
         .students
         .iter()
         .enumerate()
         .skip(model.student_render_start)
     {
+        github_width = std::cmp::max(github_width, stu.github.len());
+
         let blackbox = if let Some(grade) = stu.blackbox {
             grade.to_string()
         } else {
@@ -97,7 +107,7 @@ pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
                 normal_style
             }),
     )
-    .widths(&[15, 10, 10, 15, 15])
+    .widths(&[15, 10, github_width as u16, 15, 15])
     .render(&mut f, chunks_left[0]);
 
     // Status
@@ -126,14 +136,7 @@ pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
     let chunks_right = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints(
-            [
-                Constraint::Percentage(50),
-                Constraint::Percentage(40),
-                Constraint::Percentage(10),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(chunks_virt[1]);
     Block::default()
         .title("Log")
@@ -163,30 +166,4 @@ pub fn draw<B: Backend>(model: &Model, mut f: &mut Frame<B>) {
             normal_style
         })
         .render(&mut f, chunks_right[1]);
-
-    let text = [
-        Text::raw("abcdef\n"),
-        Text::raw("abcdef\n"),
-        Text::raw("abcdef\n"),
-        Text::raw("abcdef\n"),
-    ];
-
-    Paragraph::new(text.iter())
-        .block(
-            Block::default()
-                .title("Config")
-                .borders(Borders::ALL)
-                .border_style(if let UiWidget::Config = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                })
-                .title_style(if let UiWidget::Config = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                }),
-        )
-        .wrap(true)
-        .render(&mut f, chunks_right[2]);
 }
