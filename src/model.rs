@@ -1,5 +1,6 @@
 use crate::configs::Config;
 use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use termion::event::Key;
@@ -219,6 +220,66 @@ impl Model {
                     }
                     _ => {}
                 };
+            }
+            Key::Char('h') | Key::Char('?') => {
+                self.status.push(format!("Usage: \n"));
+                self.status
+                    .push(format!("       H J K L: navigate between panels\n"));
+                self.status.push(format!("       j k: scroll in panels\n"));
+                self.status
+                    .push(format!("       f F: fetch selected(f)/all(F) students\n"));
+                self.status.push(format!(
+                    "       b B: grade blackbox for selected(b)/all(B) students\n"
+                ));
+                self.status
+                    .push(format!("       s d: save(s)/diff(d) results\n"));
+            }
+            Key::Char('d') => {
+                let mut spawn = Command::new("git")
+                    .arg("diff")
+                    .arg("--no-index")
+                    .arg("--minimal")
+                    .arg(&self.config.results)
+                    .arg("-")
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+
+                let mut buffer = Vec::new();
+                let mut wtr = csv::Writer::from_writer(&mut buffer);
+                wtr.write_record(&["学号", "姓名", "GitHub", "黑盒成绩", "白盒成绩"])
+                    .unwrap();
+                for stu in self.students.iter() {
+                    let blackbox = if let Some(grade) = stu.blackbox {
+                        grade.to_string()
+                    } else {
+                        format!("N/A")
+                    };
+                    let whitebox = if let Some(grade) = stu.whitebox {
+                        grade.to_string()
+                    } else {
+                        format!("N/A")
+                    };
+
+                    wtr.write_record(&[
+                        &stu.student_id,
+                        &stu.name,
+                        &stu.github,
+                        &blackbox,
+                        &whitebox,
+                    ])
+                    .unwrap();
+                }
+                wtr.flush().unwrap();
+                drop(wtr);
+
+                spawn.stdin.as_mut().unwrap().write(&buffer).unwrap();
+                let out = spawn.wait_with_output().unwrap();
+                self.diff = String::from_utf8(out.stdout).unwrap().replace("\t", "    ");
+                self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
+                self.diff_scroll_start = 0;
             }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
