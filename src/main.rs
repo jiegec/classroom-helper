@@ -2,132 +2,55 @@
 extern crate clap;
 extern crate config;
 
-use clap::{App, AppSettings, Arg};
 use serde_json::Value;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-fn main() {
-    let args = App::new("classroom-helper")
-        .about("GitHub Classroom helper")
-        .author(crate_authors!())
-        .version(crate_version!())
-        .setting(AppSettings::ColoredHelp)
-        .arg(
-            Arg::with_name("organization")
-                .short("o")
-                .long("organization")
-                .value_name("org")
-                .help("GitHub organization name")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("prefix")
-                .short("p")
-                .long("prefix")
-                .value_name("prefix")
-                .help("GitHub repo prefix")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("students")
-                .short("s")
-                .long("students")
-                .value_name("students")
-                .help("Path to students csv")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("workspace")
-                .short("w")
-                .long("workspace")
-                .value_name("workspace")
-                .help("Path to workspace csv")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("template")
-                .short("t")
-                .long("template")
-                .value_name("template")
-                .help("Template repo slug")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("fetch")
-                .short("f")
-                .long("fetch")
-                .help("Fetch new commits or not"),
-        )
-        .arg(
-            Arg::with_name("result")
-                .short("r")
-                .long("result")
-                .value_name("result")
-                .help("Result csv path")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("grader")
-                .short("g")
-                .long("grader")
-                .value_name("grader")
-                .help("Grader py name")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("config")
-                .value_name("config")
-                .help("Config file"),
-        )
-        .get_matches();
+use std::io;
+use termion::event::Key;
+use termion::raw::IntoRawMode;
+use termion::screen::AlternateScreen;
+use tui::backend::TermionBackend;
+use tui::layout::{Constraint, Direction, Layout};
+use tui::widgets::{Block, Borders, Paragraph, Text, Widget};
+use tui::Terminal;
 
-    let mut settings = config::Config::default();
+mod configs;
+mod events;
+mod model;
+mod view;
 
-    // Precedence
-    // Commandline > Environment > Config
+fn main() -> Result<(), io::Error> {
+    let config = configs::Config::new();
 
-    if let Some(conf) = args.value_of("config") {
-        settings.merge(config::File::with_name(conf)).unwrap();
-    }
-    settings
-        .merge(config::Environment::with_prefix("CLASSROOM"))
-        .unwrap();
+    let stdout = io::stdout().into_raw_mode()?;
+    let stdout = AlternateScreen::from(stdout);
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    terminal.hide_cursor()?;
 
-    // Merge command line args
-    let mut overwrite = false;
-    let mut clap_args = config::Config::default();
-    for key in [
-        "organization",
-        "prefix",
-        "students",
-        "template",
-        "workspace",
-        "result",
-        "grader",
-    ]
-    .into_iter()
-    {
-        if let Some(value) = args.value_of(key) {
-            clap_args.set(*key, value).unwrap();
-            overwrite = true;
+    let events = events::Events::new();
+    let mut model = model::Model::new(config);
+
+    loop {
+        terminal.draw(|mut f| {
+            view::draw(&model, &mut f);
+        })?;
+
+        match events.next().unwrap() {
+            events::Event::Input(key) => match key {
+                Key::Char('q') => break,
+                _ => {
+                    model.handle(key);
+                }
+            },
+            _ => {}
         }
     }
 
-    if overwrite {
-        settings.merge(clap_args).unwrap();
-    }
-
-    let org = settings.get_str("organization").unwrap();
-    let prefix = settings.get_str("prefix").unwrap();
-    let students = settings.get_str("students").unwrap();
-    let template = settings.get_str("template").unwrap();
-    let workspace = settings.get_str("workspace").unwrap();
-    let results = settings.get_str("result").unwrap();
-    let grader = settings.get_str("grader").unwrap();
-
+    /*
     if !Path::new(&workspace).join(&template).join(".git").exists() {
         println!("cloning {}", template);
         let output = Command::new("git")
@@ -268,4 +191,7 @@ fn main() {
         wtr.flush().unwrap();
     }
     wtr.flush().unwrap();
+
+    */
+    Ok(())
 }
