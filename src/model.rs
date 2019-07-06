@@ -33,6 +33,8 @@ pub struct Model {
 
     pub log_scroll_start: usize,
     pub log_lines: usize,
+    pub diff_scroll_start: usize,
+    pub diff_lines: usize,
 }
 
 impl Model {
@@ -103,6 +105,8 @@ impl Model {
 
             log_scroll_start: 0,
             log_lines: 0,
+            diff_scroll_start: 0,
+            diff_lines: 0,
         }
     }
 
@@ -169,6 +173,13 @@ impl Model {
                             0
                         };
                     }
+                    UiWidget::Diff => {
+                        self.diff_scroll_start = if self.diff_scroll_start + 1 < self.diff_lines {
+                            self.diff_scroll_start + 1
+                        } else {
+                            0
+                        };
+                    }
                     _ => {}
                 };
             }
@@ -199,10 +210,19 @@ impl Model {
                             self.log_lines - 1
                         };
                     }
+                    UiWidget::Diff => {
+                        self.diff_scroll_start = if self.diff_scroll_start > 0 {
+                            self.diff_scroll_start - 1
+                        } else {
+                            self.diff_lines - 1
+                        };
+                    }
                     _ => {}
                 };
             }
-            _ => {}
+            _ => {
+                self.status.push(format!("Unhandled key {:?}\n", key));
+            }
         }
 
         if orig_student_select != self.student_select {
@@ -225,9 +245,31 @@ impl Model {
                     .stderr(Stdio::null())
                     .output()
                     .unwrap();
-                self.log = String::from_utf8(output.stdout).unwrap();
+                self.log = String::from_utf8(output.stdout)
+                    .unwrap()
+                    .replace("\t", "    ");
                 self.log_lines = self.log.chars().filter(|ch| *ch == '\n').count();
                 self.log_scroll_start = 0;
+
+                let output = Command::new("git")
+                    .current_dir(&self.config.workspace)
+                    .arg("diff")
+                    .arg("--no-index")
+                    .arg("--minimal")
+                    .arg(format!("{}/{}", self.config.template, self.config.diff))
+                    .arg(format!(
+                        "{}-{}/{}",
+                        self.config.prefix, student.github, self.config.diff
+                    ))
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .output()
+                    .unwrap();
+                self.diff = String::from_utf8(output.stdout)
+                    .unwrap()
+                    .replace("\t", "    ");
+                self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
+                self.diff_scroll_start = 0;
             }
         }
     }

@@ -161,19 +161,27 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
                 }),
         )
         .scroll(model.log_scroll_start as u16)
+        .wrap(true)
         .render(&mut f, chunks_right[0]);
-    Block::default()
-        .title("Diff")
-        .borders(Borders::ALL)
-        .border_style(if let UiWidget::Diff = model.current {
-            highlighted_style
-        } else {
-            normal_style
-        })
-        .title_style(if let UiWidget::Diff = model.current {
-            highlighted_style
-        } else {
-            normal_style
-        })
+
+    // Diff
+    Paragraph::new([Text::raw(model.diff.clone())].iter())
+        .block(
+            Block::default()
+                .title("Diff")
+                .borders(Borders::ALL)
+                .border_style(if let UiWidget::Diff = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                })
+                .title_style(if let UiWidget::Diff = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                }),
+        )
+        .scroll(model.diff_scroll_start as u16)
+        .wrap(true)
         .render(&mut f, chunks_right[1]);
 }
