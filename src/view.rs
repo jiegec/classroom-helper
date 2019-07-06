@@ -22,7 +22,6 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
 
     let chunks_left = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref())
         .split(chunks_virt[0]);
 
@@ -115,6 +114,11 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     for line in model.status.iter() {
         status.push(Text::raw(line.clone()));
     }
+    let status_scroll = if status.len() > chunks_left[1].height as usize - 3 {
+        status.len() - (chunks_left[1].height as usize - 3)
+    } else {
+        0
+    };
     Paragraph::new(status.iter())
         .block(
             Block::default()
@@ -131,26 +135,32 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
                     normal_style
                 }),
         )
+        .scroll(status_scroll as u16)
         .render(&mut f, chunks_left[1]);
 
     let chunks_right = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(chunks_virt[1]);
-    Block::default()
-        .title("Log")
-        .borders(Borders::ALL)
-        .border_style(if let UiWidget::Log = model.current {
-            highlighted_style
-        } else {
-            normal_style
-        })
-        .title_style(if let UiWidget::Log = model.current {
-            highlighted_style
-        } else {
-            normal_style
-        })
+
+    // Log
+    Paragraph::new([Text::raw(model.log.clone())].iter())
+        .block(
+            Block::default()
+                .title("Log")
+                .borders(Borders::ALL)
+                .border_style(if let UiWidget::Log = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                })
+                .title_style(if let UiWidget::Log = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                }),
+        )
+        .scroll(model.log_scroll_start as u16)
         .render(&mut f, chunks_right[0]);
     Block::default()
         .title("Diff")

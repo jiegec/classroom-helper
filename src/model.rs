@@ -1,6 +1,7 @@
 use crate::configs::Config;
 use std::fs::File;
 use std::path::Path;
+use std::process::{Command, Stdio};
 use termion::event::Key;
 
 pub enum UiWidget {
@@ -24,8 +25,14 @@ pub struct Model {
     pub students: Vec<Student>,
     pub status: Vec<String>,
 
+    pub log: String,
+    pub diff: String,
+
     pub student_select: Option<usize>,
     pub student_render_start: usize,
+
+    pub log_scroll_start: usize,
+    pub log_lines: usize,
 }
 
 impl Model {
@@ -81,7 +88,7 @@ impl Model {
             }
         }
 
-        status.push(format!("Read {} students from data", students.len()));
+        status.push(format!("Read {} students from data\n", students.len()));
 
         Model {
             config,
@@ -90,10 +97,17 @@ impl Model {
             status,
             student_select: None,
             student_render_start: 0,
+
+            log: String::new(),
+            diff: String::new(),
+
+            log_scroll_start: 0,
+            log_lines: 0,
         }
     }
 
     pub fn handle(&mut self, key: Key) {
+        let orig_student_select = self.student_select;
         match key {
             // change current widget
             Key::Char('H') => {
@@ -148,6 +162,13 @@ impl Model {
                             }
                         }
                     }
+                    UiWidget::Log => {
+                        self.log_scroll_start = if self.log_scroll_start + 1 < self.log_lines {
+                            self.log_scroll_start + 1
+                        } else {
+                            0
+                        };
+                    }
                     _ => {}
                 };
             }
@@ -171,10 +192,43 @@ impl Model {
                             }
                         }
                     }
+                    UiWidget::Log => {
+                        self.log_scroll_start = if self.log_scroll_start > 0 {
+                            self.log_scroll_start - 1
+                        } else {
+                            self.log_lines - 1
+                        };
+                    }
                     _ => {}
                 };
             }
             _ => {}
+        }
+
+        if orig_student_select != self.student_select {
+            // Selection changed
+            let student = &self.students[self.student_select.unwrap()];
+            self.status.push(format!("Looking at {}\n", student.name));
+
+            if Path::new(&self.config.workspace)
+                .join(format!("{}-{}", self.config.prefix, student.github))
+                .join(".git")
+                .exists()
+            {
+                let output = Command::new("git")
+                    .current_dir(format!(
+                        "{}/{}-{}",
+                        self.config.workspace, self.config.prefix, student.github
+                    ))
+                    .arg("log")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .output()
+                    .unwrap();
+                self.log = String::from_utf8(output.stdout).unwrap();
+                self.log_lines = self.log.chars().filter(|ch| *ch == '\n').count();
+                self.log_scroll_start = 0;
+            }
         }
     }
 }
