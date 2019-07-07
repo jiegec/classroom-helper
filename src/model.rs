@@ -200,6 +200,13 @@ impl Model {
                 )))
                 .unwrap();
                 tx.send(Message::Grade((index, grade))).unwrap();
+            } else {
+                tx.send(Message::Status(format!(
+                    "Grading {} repo not found",
+                    github
+                )))
+                .unwrap();
+                tx.send(Message::Grade((index, None))).unwrap();
             }
         });
     }
