@@ -1,4 +1,5 @@
 use crate::configs::Config;
+use serde_json::Value;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -31,6 +32,7 @@ pub struct Student {
 
 pub enum Message {
     Status(String),
+    Grade((usize, Option<f64>)),
 }
 
 pub struct Model {
@@ -63,6 +65,7 @@ impl Model {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
         thread::spawn(move || {
+            let mut reset = false;
             if !Path::new(&config.workspace)
                 .join(format!("{}-{}", config.prefix, github))
                 .join(".git")
@@ -82,6 +85,7 @@ impl Model {
                     .status()
                     .unwrap();
                 if output.success() {
+                    reset = true;
                     tx.send(Message::Status(format!("Cloning {} done", github)))
                         .unwrap();
                 } else {
@@ -101,12 +105,103 @@ impl Model {
                     .status()
                     .unwrap();
                 if output.success() {
+                    reset = true;
                     tx.send(Message::Status(format!("Fetching {} done", github)))
                         .unwrap();
                 } else {
                     tx.send(Message::Status(format!("Fetching {} failed", github)))
                         .unwrap();
                 }
+            }
+
+            if reset {
+                let output = Command::new("git")
+                    .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                    .arg("add")
+                    .arg(".")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .unwrap();
+                if output.success() {
+                    let output = Command::new("git")
+                        .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                        .arg("reset")
+                        .arg("origin/master")
+                        .arg("--hard")
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status()
+                        .unwrap();
+                    if !output.success() {
+                        tx.send(Message::Status(format!("Resetting {} failed", github)))
+                            .unwrap();
+                    }
+                } else {
+                    tx.send(Message::Status(format!("Resetting {} failed", github)))
+                        .unwrap();
+                }
+            }
+        });
+    }
+
+    fn git_grade(&self, index: usize, github: String) {
+        let tx = self.tx_messages.clone();
+        let config = self.config.clone();
+        thread::spawn(move || {
+            if Path::new(&config.workspace)
+                .join(format!("{}-{}", config.prefix, github))
+                .join(".git")
+                .exists()
+            {
+                for path in config.copy.iter() {
+                    let orig_path = Path::new(&config.workspace)
+                        .join(&config.template)
+                        .join(&path);
+                    if orig_path.is_dir() {
+                        let dest_path = Path::new(&config.workspace)
+                            .join(format!("{}-{}", config.prefix, github))
+                            .join(&path);
+                        fs_extra::dir::remove(&dest_path).unwrap();
+                        let mut options = fs_extra::dir::CopyOptions::new();
+                        options.overwrite = true;
+                        fs_extra::dir::copy(orig_path, dest_path, &options).unwrap();
+                    } else if orig_path.is_file() {
+                        let mut options = fs_extra::file::CopyOptions::new();
+                        options.overwrite = true;
+                        fs_extra::file::copy(
+                            orig_path,
+                            Path::new(&config.workspace)
+                                .join(format!("{}-{}", config.prefix, github))
+                                .join(&path),
+                            &options,
+                        )
+                        .unwrap();
+                    }
+                }
+
+                tx.send(Message::Status(format!("Grading {} begin", github)))
+                    .unwrap();
+                let output = Command::new("python3")
+                    .current_dir(format!(
+                        "{}/{}-{}",
+                        &config.workspace, &config.prefix, github
+                    ))
+                    .arg(&config.grader)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .unwrap();
+                let res = output.wait_with_output().unwrap();
+                let ans = String::from_utf8_lossy(&res.stdout);
+                let value: Value = serde_json::from_str(&ans).unwrap();
+                let grade = value.get("grade").unwrap().as_f64();
+                tx.send(Message::Status(format!(
+                    "Grading {} ended with {:?}",
+                    github, grade
+                )))
+                .unwrap();
+                tx.send(Message::Grade((index, grade))).unwrap();
             }
         });
     }
@@ -444,6 +539,16 @@ impl Model {
                     self.git_fetch(stu.github.clone());
                 }
             }
+            Key::Char('g') => {
+                if let Some(index) = self.student_select {
+                    self.git_grade(index, self.students[index].github.clone());
+                }
+            }
+            Key::Char('G') => {
+                for (index, stu) in self.students.iter().enumerate() {
+                    self.git_grade(index, stu.github.clone());
+                }
+            }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
             }
@@ -508,7 +613,9 @@ impl Model {
                 Message::Status(status) => {
                     self.status.push(format!("{}\n", status));
                 }
-                _ => {}
+                Message::Grade((index, grade)) => {
+                    self.students[index].blackbox = grade;
+                }
             }
         }
     }
