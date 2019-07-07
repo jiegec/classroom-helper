@@ -36,9 +36,45 @@ pub struct Model {
     pub log_lines: usize,
     pub diff_scroll_start: usize,
     pub diff_lines: usize,
+
+    pub grade_buffer: Option<String>
 }
 
 impl Model {
+    fn gen_results(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        // UTF-8 BOM
+        buffer.push(0xef);
+        buffer.push(0xbb);
+        buffer.push(0xbf);
+        let mut wtr = csv::Writer::from_writer(&mut buffer);
+        wtr.write_record(&["学号", "姓名", "GitHub", "黑盒成绩", "白盒成绩"])
+            .unwrap();
+        for stu in self.students.iter() {
+            let blackbox = if let Some(grade) = stu.blackbox {
+                grade.to_string()
+            } else {
+                format!("N/A")
+            };
+            let whitebox = if let Some(grade) = stu.whitebox {
+                grade.to_string()
+            } else {
+                format!("N/A")
+            };
+
+            wtr.write_record(&[
+                &stu.student_id,
+                &stu.name,
+                &stu.github,
+                &blackbox,
+                &whitebox,
+            ])
+            .unwrap();
+        }
+        wtr.flush().unwrap();
+        drop(wtr);
+        buffer
+    }
     pub fn new(config: Config) -> Model {
         let mut status = Vec::new();
 
@@ -108,11 +144,14 @@ impl Model {
             log_lines: 0,
             diff_scroll_start: 0,
             diff_lines: 0,
+
+            grade_buffer: None,
         }
     }
 
     pub fn handle(&mut self, key: Key) {
         let orig_student_select = self.student_select;
+        let mut update_grade = false;
         match key {
             // change current widget
             Key::Char('H') => {
@@ -233,6 +272,8 @@ impl Model {
                 ));
                 self.status
                     .push(format!("       s d: save(s)/diff(d) results\n"));
+                self.status
+                    .push(format!("       [num]+b w: set blackbox(b)/whitebox(b) grade manually\n"));
             }
             Key::Char('d') => {
                 let mut spawn = Command::new("git")
@@ -247,33 +288,7 @@ impl Model {
                     .spawn()
                     .unwrap();
 
-                let mut buffer = Vec::new();
-                let mut wtr = csv::Writer::from_writer(&mut buffer);
-                wtr.write_record(&["学号", "姓名", "GitHub", "黑盒成绩", "白盒成绩"])
-                    .unwrap();
-                for stu in self.students.iter() {
-                    let blackbox = if let Some(grade) = stu.blackbox {
-                        grade.to_string()
-                    } else {
-                        format!("N/A")
-                    };
-                    let whitebox = if let Some(grade) = stu.whitebox {
-                        grade.to_string()
-                    } else {
-                        format!("N/A")
-                    };
-
-                    wtr.write_record(&[
-                        &stu.student_id,
-                        &stu.name,
-                        &stu.github,
-                        &blackbox,
-                        &whitebox,
-                    ])
-                    .unwrap();
-                }
-                wtr.flush().unwrap();
-                drop(wtr);
+                let buffer = self.gen_results();
 
                 spawn.stdin.as_mut().unwrap().write(&buffer).unwrap();
                 let out = spawn.wait_with_output().unwrap();
@@ -281,9 +296,48 @@ impl Model {
                 self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
                 self.diff_scroll_start = 0;
             }
+            Key::Char('s') => {
+                let buffer = self.gen_results();
+
+                let mut file = File::create(&self.config.results).unwrap();
+                file.write_all(&buffer).unwrap();
+                self.status.push(format!("Saved to {}\n", self.config.results));
+            }
+            Key::Char(ch) if (ch >= '0' && ch <= '9') || ch == '.' => {
+                if let Some(buffer) = &mut self.grade_buffer {
+                    buffer.push(ch);
+                } else {
+                    self.grade_buffer = Some(ch.to_string());
+                }
+                update_grade = true;
+            }
+            Key::Char('b') => {
+                if let Some(index) = self.student_select {
+                    let blackbox = if let Some(grade) = &self.grade_buffer {
+                        grade.parse::<f64>().ok()
+                    } else {
+                        None
+                    };
+                    self.students[index].blackbox = blackbox;
+                }
+            }
+            Key::Char('w') => {
+                if let Some(index) = self.student_select {
+                    let whitebox = if let Some(grade) = &self.grade_buffer {
+                        grade.parse::<f64>().ok()
+                    } else {
+                        None
+                    };
+                    self.students[index].whitebox = whitebox;
+                }
+            }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
             }
+        }
+
+        if !update_grade {
+            self.grade_buffer = None;
         }
 
         if orig_student_select != self.student_select {
