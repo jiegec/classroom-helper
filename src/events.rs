@@ -13,8 +13,8 @@ pub enum Event {
 
 pub struct Events {
     rx: mpsc::Receiver<Event>,
-    input_handle: thread::JoinHandle<()>,
-    tick_handle: thread::JoinHandle<()>,
+    _input_handle: thread::JoinHandle<()>,
+    _tick_handle: thread::JoinHandle<()>,
 }
 
 impl Events {
@@ -48,8 +48,8 @@ impl Events {
         };
         Events {
             rx,
-            input_handle,
-            tick_handle,
+            _input_handle: input_handle,
+            _tick_handle: tick_handle,
         }
     }
 

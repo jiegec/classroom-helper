@@ -5,7 +5,6 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
-use std::thread;
 use termion::event::Key;
 use threadpool::ThreadPool;
 
@@ -99,7 +98,7 @@ impl Model {
                     .current_dir(format!("{}/{}", config.workspace, repo))
                     .arg("fetch")
                     .arg("origin")
-                    .arg("master")
+                    .arg(&branch)
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
                     .status()
@@ -504,6 +503,8 @@ impl Model {
                 ));
                 self.status
                     .push(format!("       r: repeat last grade for current student\n"));
+                self.status
+                    .push(format!("       t: bump template repo to newest version\n"));
             }
             Key::Char('d') => {
                 let mut spawn = Command::new("git")
@@ -594,6 +595,12 @@ impl Model {
                 for (index, stu) in self.students.iter().enumerate() {
                     self.git_grade(index, stu.github.clone());
                 }
+            }
+            Key::Char('t') => {
+                self.git_fetch(
+                    self.config.template.clone(),
+                    self.config.template_branch.clone(),
+                );
             }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
