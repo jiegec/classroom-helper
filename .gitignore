@@ -3,3 +3,4 @@
 *.csv
 workspace*
 *.toml
+!template.toml

@@ -1,0 +1,26 @@
+# The organization using GitHub Classroom
+organization = ""
+
+# The prefix of user repos, i.e. user repos should have a format of prefix-username
+prefix = ""
+
+# The workspace of user repos and template repo
+workspace = ""
+
+# The name of template repo, under the same organization
+template = ""
+
+# The output csv file to store grades
+result = ""
+
+# The students csv having three columns: student id, real name and GitHub user name.
+students = "students.csv"
+
+# The path to python3 script grader
+grader = "grade.py"
+
+# The file to show diff between user repo and template repo
+diff = ""
+
+# The file to overwrite from template to user before grading
+copy = ["grade.py"]

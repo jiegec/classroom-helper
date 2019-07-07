@@ -1,14 +1,9 @@
 use crate::model::{Model, UiWidget};
-use std::io;
-use termion::event::Key;
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
 use tui::backend::Backend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::terminal::Frame;
 use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text, Widget};
-use tui::Terminal;
 
 pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
