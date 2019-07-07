@@ -12,6 +12,13 @@ pub enum UiWidget {
     Diff,
 }
 
+#[derive(Debug)]
+pub enum Select {
+    Whitebox,
+    Blackbox,
+    Last,
+}
+
 pub struct Student {
     pub student_id: String,
     pub name: String,
@@ -37,10 +44,46 @@ pub struct Model {
     pub diff_scroll_start: usize,
     pub diff_lines: usize,
 
-    pub grade_buffer: Option<String>
+    pub grade_buffer: Option<String>,
+    // last graded: grade, true for whitebox, false for blackbox
+    pub last_grade: Option<(Option<f64>, bool)>,
 }
 
 impl Model {
+    // true for whitebox, false for blackbox
+    fn update_grade(&mut self, select: Select) {
+        if let Some(index) = self.student_select {
+            let (new_grade, selector) = if let Select::Last = select {
+                if let Some(last) = self.last_grade {
+                    last
+                } else {
+                    return;
+                }
+            } else {
+                let new_grade = if let Some(grade) = &self.grade_buffer {
+                    grade.parse::<f64>().ok()
+                } else {
+                    None
+                };
+                let selector = if let Select::Whitebox = select {
+                    true
+                } else {
+                    false
+                };
+                (new_grade, selector)
+            };
+
+            if selector {
+                self.students[index].whitebox = new_grade;
+            } else {
+                self.students[index].blackbox = new_grade;
+            }
+            if index + 1 < self.students.len() {
+                self.student_select = Some(index + 1);
+            }
+            self.last_grade = Some((new_grade, selector));
+        }
+    }
     fn gen_results(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
         // UTF-8 BOM
@@ -146,6 +189,7 @@ impl Model {
             diff_lines: 0,
 
             grade_buffer: None,
+            last_grade: None,
         }
     }
 
@@ -272,8 +316,11 @@ impl Model {
                 ));
                 self.status
                     .push(format!("       s d: save(s)/diff(d) results\n"));
+                self.status.push(format!(
+                    "       [num]+b w: set blackbox(b)/whitebox(b) grade manually\n"
+                ));
                 self.status
-                    .push(format!("       [num]+b w: set blackbox(b)/whitebox(b) grade manually\n"));
+                    .push(format!("       r: repeat last grade for current student\n"));
             }
             Key::Char('d') => {
                 let mut spawn = Command::new("git")
@@ -301,7 +348,8 @@ impl Model {
 
                 let mut file = File::create(&self.config.results).unwrap();
                 file.write_all(&buffer).unwrap();
-                self.status.push(format!("Saved to {}\n", self.config.results));
+                self.status
+                    .push(format!("Saved to {}\n", self.config.results));
             }
             Key::Char(ch) if (ch >= '0' && ch <= '9') || ch == '.' => {
                 if let Some(buffer) = &mut self.grade_buffer {
@@ -312,24 +360,13 @@ impl Model {
                 update_grade = true;
             }
             Key::Char('b') => {
-                if let Some(index) = self.student_select {
-                    let blackbox = if let Some(grade) = &self.grade_buffer {
-                        grade.parse::<f64>().ok()
-                    } else {
-                        None
-                    };
-                    self.students[index].blackbox = blackbox;
-                }
+                self.update_grade(Select::Blackbox);
             }
             Key::Char('w') => {
-                if let Some(index) = self.student_select {
-                    let whitebox = if let Some(grade) = &self.grade_buffer {
-                        grade.parse::<f64>().ok()
-                    } else {
-                        None
-                    };
-                    self.students[index].whitebox = whitebox;
-                }
+                self.update_grade(Select::Whitebox);
+            }
+            Key::Char('r') => {
+                self.update_grade(Select::Last);
             }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
