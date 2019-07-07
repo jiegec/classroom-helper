@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::thread;
 use termion::event::Key;
 
 pub enum UiWidget {
@@ -27,6 +29,10 @@ pub struct Student {
     pub whitebox: Option<f64>,
 }
 
+pub enum Message {
+    Status(String),
+}
+
 pub struct Model {
     pub config: Config,
     pub current: UiWidget,
@@ -47,9 +53,64 @@ pub struct Model {
     pub grade_buffer: Option<String>,
     // last graded: grade, true for whitebox, false for blackbox
     pub last_grade: Option<(Option<f64>, bool)>,
+
+    pub rx_messages: mpsc::Receiver<Message>,
+    pub tx_messages: mpsc::Sender<Message>,
 }
 
 impl Model {
+    fn git_fetch(&self, github: String) {
+        let tx = self.tx_messages.clone();
+        let config = self.config.clone();
+        thread::spawn(move || {
+            if !Path::new(&config.workspace)
+                .join(format!("{}-{}", config.prefix, github))
+                .join(".git")
+                .exists()
+            {
+                tx.send(Message::Status(format!("Cloning {} begin", github)))
+                    .unwrap();
+                let output = Command::new("git")
+                    .current_dir(&config.workspace)
+                    .arg("clone")
+                    .arg(format!(
+                        "git@github.com:{}/{}-{}.git",
+                        config.org, config.prefix, github
+                    ))
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .unwrap();
+                if output.success() {
+                    tx.send(Message::Status(format!("Cloning {} done", github)))
+                        .unwrap();
+                } else {
+                    tx.send(Message::Status(format!("Cloning {} failed", github)))
+                        .unwrap();
+                }
+            } else {
+                tx.send(Message::Status(format!("Fetching {} begin", github)))
+                    .unwrap();
+                let output = Command::new("git")
+                    .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                    .arg("fetch")
+                    .arg("origin")
+                    .arg("master")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .unwrap();
+                if output.success() {
+                    tx.send(Message::Status(format!("Fetching {} done", github)))
+                        .unwrap();
+                } else {
+                    tx.send(Message::Status(format!("Fetching {} failed", github)))
+                        .unwrap();
+                }
+            }
+        });
+    }
+
     // true for whitebox, false for blackbox
     fn update_grade(&mut self, select: Select) {
         if let Some(index) = self.student_select {
@@ -172,6 +233,8 @@ impl Model {
 
         status.push(format!("Read {} students from data\n", students.len()));
 
+        let (tx, rx) = mpsc::channel();
+
         Model {
             config,
             current: UiWidget::Student,
@@ -190,6 +253,9 @@ impl Model {
 
             grade_buffer: None,
             last_grade: None,
+
+            tx_messages: tx,
+            rx_messages: rx,
         }
     }
 
@@ -368,6 +434,16 @@ impl Model {
             Key::Char('r') => {
                 self.update_grade(Select::Last);
             }
+            Key::Char('f') => {
+                if let Some(index) = self.student_select {
+                    self.git_fetch(self.students[index].github.clone());
+                }
+            }
+            Key::Char('F') => {
+                for stu in self.students.iter() {
+                    self.git_fetch(stu.github.clone());
+                }
+            }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
             }
@@ -422,6 +498,17 @@ impl Model {
                     .replace("\t", "    ");
                 self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
                 self.diff_scroll_start = 0;
+            }
+        }
+    }
+
+    pub fn tick(&mut self) {
+        while let Ok(message) = self.rx_messages.try_recv() {
+            match message {
+                Message::Status(status) => {
+                    self.status.push(format!("{}\n", status));
+                }
+                _ => {}
             }
         }
     }

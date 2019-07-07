@@ -48,6 +48,8 @@ fn main() -> Result<(), io::Error> {
             },
             _ => {}
         }
+
+        model.tick();
     }
 
     /*

@@ -1,5 +1,6 @@
 use clap::{App, AppSettings, Arg};
 
+#[derive(Clone)]
 pub struct Config {
     pub org: String,
     pub prefix: String,
