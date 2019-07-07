@@ -12,7 +12,7 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     let chunks_virt = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
         .split(f.size());
 
     let chunks_left = Layout::default()

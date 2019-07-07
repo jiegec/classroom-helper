@@ -7,6 +7,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use termion::event::Key;
+use threadpool::ThreadPool;
 
 pub enum UiWidget {
     Student,
@@ -58,13 +59,15 @@ pub struct Model {
 
     pub rx_messages: mpsc::Receiver<Message>,
     pub tx_messages: mpsc::Sender<Message>,
+
+    pub pool: ThreadPool,
 }
 
 impl Model {
     fn git_fetch(&self, repo: String, branch: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
-        thread::spawn(move || {
+        self.pool.execute(move || {
             let mut reset = false;
             if !Path::new(&config.workspace)
                 .join(&repo)
@@ -110,7 +113,6 @@ impl Model {
                         .unwrap();
                 }
             }
-
             if reset {
                 let output = Command::new("git")
                     .current_dir(format!("{}/{}", config.workspace, repo))
@@ -158,7 +160,7 @@ impl Model {
     fn git_grade(&self, index: usize, github: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
-        thread::spawn(move || {
+        self.pool.execute(move || {
             if Path::new(&config.workspace)
                 .join(format!("{}-{}", config.prefix, github))
                 .join(".git")
@@ -369,6 +371,8 @@ impl Model {
 
             tx_messages: tx,
             rx_messages: rx,
+
+            pool: ThreadPool::new(1),
         }
     }
 
@@ -519,8 +523,14 @@ impl Model {
                 spawn.stdin.as_mut().unwrap().write(&buffer).unwrap();
                 let out = spawn.wait_with_output().unwrap();
                 self.diff = String::from_utf8(out.stdout).unwrap().replace("\t", "    ");
-                self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
-                self.diff_scroll_start = 0;
+                if self.diff.len() > 0 {
+                    self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
+                    self.diff_scroll_start = 0;
+                } else {
+                    self.diff = format!("No difference");
+                    self.diff_lines = 1;
+                    self.diff_scroll_start = 0;
+                }
             }
             Key::Char('s') => {
                 let buffer = self.gen_results();
