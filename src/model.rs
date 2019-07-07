@@ -607,6 +607,14 @@ impl Model {
                     .replace("\t", "    ");
                 self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
                 self.diff_scroll_start = 0;
+            } else {
+                self.log = String::from("N/A");
+                self.log_lines = 1;
+                self.log_scroll_start = 0;
+
+                self.diff = String::from("N/A");
+                self.diff_lines = 1;
+                self.diff_scroll_start = 0;
             }
         }
     }
