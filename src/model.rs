@@ -61,42 +61,39 @@ pub struct Model {
 }
 
 impl Model {
-    fn git_fetch(&self, github: String) {
+    fn git_fetch(&self, repo: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
         thread::spawn(move || {
             let mut reset = false;
             if !Path::new(&config.workspace)
-                .join(format!("{}-{}", config.prefix, github))
+                .join(&repo)
                 .join(".git")
                 .exists()
             {
-                tx.send(Message::Status(format!("Cloning {} begin", github)))
+                tx.send(Message::Status(format!("Cloning {} begin", repo)))
                     .unwrap();
                 let output = Command::new("git")
                     .current_dir(&config.workspace)
                     .arg("clone")
-                    .arg(format!(
-                        "git@github.com:{}/{}-{}.git",
-                        config.org, config.prefix, github
-                    ))
+                    .arg(format!("git@github.com:{}/{}.git", config.org, repo))
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
                     .status()
                     .unwrap();
                 if output.success() {
                     reset = true;
-                    tx.send(Message::Status(format!("Cloning {} done", github)))
+                    tx.send(Message::Status(format!("Cloning {} done", repo)))
                         .unwrap();
                 } else {
-                    tx.send(Message::Status(format!("Cloning {} failed", github)))
+                    tx.send(Message::Status(format!("Cloning {} failed", repo)))
                         .unwrap();
                 }
             } else {
-                tx.send(Message::Status(format!("Fetching {} begin", github)))
+                tx.send(Message::Status(format!("Fetching {} begin", repo)))
                     .unwrap();
                 let output = Command::new("git")
-                    .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                    .current_dir(format!("{}/{}", config.workspace, repo))
                     .arg("fetch")
                     .arg("origin")
                     .arg("master")
@@ -106,17 +103,17 @@ impl Model {
                     .unwrap();
                 if output.success() {
                     reset = true;
-                    tx.send(Message::Status(format!("Fetching {} done", github)))
+                    tx.send(Message::Status(format!("Fetching {} done", repo)))
                         .unwrap();
                 } else {
-                    tx.send(Message::Status(format!("Fetching {} failed", github)))
+                    tx.send(Message::Status(format!("Fetching {} failed", repo)))
                         .unwrap();
                 }
             }
 
             if reset {
                 let output = Command::new("git")
-                    .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                    .current_dir(format!("{}/{}", config.workspace, repo))
                     .arg("clean")
                     .arg("-f")
                     .stdout(Stdio::null())
@@ -125,7 +122,7 @@ impl Model {
                     .unwrap();
                 if output.success() {
                     let output = Command::new("git")
-                        .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
+                        .current_dir(format!("{}/{}", config.workspace, repo))
                         .arg("reset")
                         .arg("origin/master")
                         .arg("--hard")
@@ -134,11 +131,11 @@ impl Model {
                         .status()
                         .unwrap();
                     if !output.success() {
-                        tx.send(Message::Status(format!("Resetting {} failed", github)))
+                        tx.send(Message::Status(format!("Resetting {} failed", repo)))
                             .unwrap();
                     }
                 } else {
-                    tx.send(Message::Status(format!("Resetting {} failed", github)))
+                    tx.send(Message::Status(format!("Resetting {} failed", repo)))
                         .unwrap();
                 }
             }
@@ -531,13 +528,19 @@ impl Model {
                 self.update_grade(Select::Last);
             }
             Key::Char('f') => {
+                self.git_fetch(self.config.template.clone());
                 if let Some(index) = self.student_select {
-                    self.git_fetch(self.students[index].github.clone());
+                    self.git_fetch(format!(
+                        "{}-{}",
+                        self.config.prefix,
+                        self.students[index].github.clone()
+                    ));
                 }
             }
             Key::Char('F') => {
+                self.git_fetch(self.config.template.clone());
                 for stu in self.students.iter() {
-                    self.git_fetch(stu.github.clone());
+                    self.git_fetch(format!("{}-{}", self.config.prefix, stu.github.clone()));
                 }
             }
             Key::Char('g') => {

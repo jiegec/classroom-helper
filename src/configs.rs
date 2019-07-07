@@ -61,12 +61,6 @@ impl Config {
                     .takes_value(true),
             )
             .arg(
-                Arg::with_name("fetch")
-                    .short("f")
-                    .long("fetch")
-                    .help("Fetch new commits or not"),
-            )
-            .arg(
                 Arg::with_name("result")
                     .short("r")
                     .long("result")
