@@ -117,8 +117,8 @@ impl Model {
             if reset {
                 let output = Command::new("git")
                     .current_dir(format!("{}/{}-{}", config.workspace, config.prefix, github))
-                    .arg("add")
-                    .arg(".")
+                    .arg("clean")
+                    .arg("-f")
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())
                     .status()
@@ -473,7 +473,7 @@ impl Model {
                 self.status
                     .push(format!("       f F: fetch selected(f)/all(F) students\n"));
                 self.status.push(format!(
-                    "       b B: grade blackbox for selected(b)/all(B) students\n"
+                    "       g G: grade blackbox for selected(g)/all(G) students\n"
                 ));
                 self.status
                     .push(format!("       s d: save(s)/diff(d) results\n"));
@@ -539,12 +539,12 @@ impl Model {
                     self.git_fetch(stu.github.clone());
                 }
             }
-            Key::Char('b') => {
+            Key::Char('g') => {
                 if let Some(index) = self.student_select {
                     self.git_grade(index, self.students[index].github.clone());
                 }
             }
-            Key::Char('B') => {
+            Key::Char('G') => {
                 for (index, stu) in self.students.iter().enumerate() {
                     self.git_grade(index, stu.github.clone());
                 }
