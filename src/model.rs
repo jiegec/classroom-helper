@@ -539,12 +539,12 @@ impl Model {
                     self.git_fetch(stu.github.clone());
                 }
             }
-            Key::Char('g') => {
+            Key::Char('b') => {
                 if let Some(index) = self.student_select {
                     self.git_grade(index, self.students[index].github.clone());
                 }
             }
-            Key::Char('G') => {
+            Key::Char('B') => {
                 for (index, stu) in self.students.iter().enumerate() {
                     self.git_grade(index, stu.github.clone());
                 }
