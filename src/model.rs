@@ -165,6 +165,7 @@ impl Model {
                         fs_extra::dir::remove(&dest_path).unwrap();
                         let mut options = fs_extra::dir::CopyOptions::new();
                         options.overwrite = true;
+                        options.copy_inside = true;
                         fs_extra::dir::copy(orig_path, dest_path, &options).unwrap();
                     } else if orig_path.is_file() {
                         let mut options = fs_extra::file::CopyOptions::new();
