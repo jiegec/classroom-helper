@@ -10,6 +10,9 @@ workspace = ""
 # The name of template repo, under the same organization
 template = ""
 
+# The branch of template repo, default to master
+template_branch = ""
+
 # The output csv file to store grades
 result = ""
 

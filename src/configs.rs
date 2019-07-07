@@ -1,4 +1,6 @@
 use clap::{App, AppSettings, Arg};
+use std::fs;
+use std::path::Path;
 
 #[derive(Clone)]
 pub struct Config {
@@ -6,6 +8,7 @@ pub struct Config {
     pub prefix: String,
     pub students: String,
     pub template: String,
+    pub template_branch: String,
     pub workspace: String,
     pub results: String,
     pub grader: String,
@@ -60,6 +63,14 @@ impl Config {
                     .takes_value(true),
             )
             .arg(
+                Arg::with_name("template_branch")
+                    .short("b")
+                    .long("template_branch")
+                    .value_name("template_branch")
+                    .help("Template repo branch")
+                    .takes_value(true),
+            )
+            .arg(
                 Arg::with_name("result")
                     .short("r")
                     .long("result")
@@ -102,6 +113,7 @@ impl Config {
             "prefix",
             "students",
             "template",
+            "template_branch",
             "workspace",
             "result",
             "grader",
@@ -122,11 +134,16 @@ impl Config {
         let prefix = settings.get_str("prefix").unwrap();
         let students = settings.get_str("students").unwrap();
         let template = settings.get_str("template").unwrap();
+        let template_branch = settings
+            .get_str("template_branch")
+            .unwrap_or(format!("master"));
         let workspace = settings.get_str("workspace").unwrap();
         let results = settings.get_str("result").unwrap();
         let grader = settings.get_str("grader").unwrap();
         let copy_values = settings.get_array("copy").unwrap();
         let mut copy = Vec::new();
+
+        fs::create_dir_all(Path::new(&workspace)).unwrap();
 
         for value in copy_values.into_iter() {
             copy.push(value.into_str().unwrap());
@@ -137,6 +154,7 @@ impl Config {
             prefix,
             students,
             template,
+            template_branch,
             workspace,
             results,
             grader,

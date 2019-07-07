@@ -61,7 +61,7 @@ pub struct Model {
 }
 
 impl Model {
-    fn git_fetch(&self, repo: String) {
+    fn git_fetch(&self, repo: String, branch: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
         thread::spawn(move || {
@@ -124,13 +124,26 @@ impl Model {
                     let output = Command::new("git")
                         .current_dir(format!("{}/{}", config.workspace, repo))
                         .arg("reset")
-                        .arg("origin/master")
+                        .arg(format!("origin/{}", branch))
                         .arg("--hard")
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .status()
                         .unwrap();
-                    if !output.success() {
+                    if output.success() {
+                        let output = Command::new("git")
+                            .current_dir(format!("{}/{}", config.workspace, repo))
+                            .arg("checkout")
+                            .arg(branch)
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .status()
+                            .unwrap();
+                        if !output.success() {
+                            tx.send(Message::Status(format!("Checkout {} failed", repo)))
+                                .unwrap();
+                        }
+                    } else {
                         tx.send(Message::Status(format!("Resetting {} failed", repo)))
                             .unwrap();
                     }
@@ -535,19 +548,31 @@ impl Model {
                 self.update_grade(Select::Last);
             }
             Key::Char('f') => {
-                self.git_fetch(self.config.template.clone());
+                self.git_fetch(
+                    self.config.template.clone(),
+                    self.config.template_branch.clone(),
+                );
                 if let Some(index) = self.student_select {
-                    self.git_fetch(format!(
-                        "{}-{}",
-                        self.config.prefix,
-                        self.students[index].github.clone()
-                    ));
+                    self.git_fetch(
+                        format!(
+                            "{}-{}",
+                            self.config.prefix,
+                            self.students[index].github.clone(),
+                        ),
+                        format!("master"),
+                    );
                 }
             }
             Key::Char('F') => {
-                self.git_fetch(self.config.template.clone());
+                self.git_fetch(
+                    self.config.template.clone(),
+                    self.config.template_branch.clone(),
+                );
                 for stu in self.students.iter() {
-                    self.git_fetch(format!("{}-{}", self.config.prefix, stu.github.clone()));
+                    self.git_fetch(
+                        format!("{}-{}", self.config.prefix, stu.github.clone()),
+                        format!("master"),
+                    );
                 }
             }
             Key::Char('g') => {
@@ -645,8 +670,8 @@ impl Model {
                             .stderr(Stdio::null())
                             .output()
                             .unwrap();
-                        self.diff = String::from_utf8(output.stdout)
-                            .unwrap()
+                        self.diff = String::from_utf8_lossy(&output.stdout)
+                            .to_owned()
                             .replace("\t", "    ");
                         self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
                         self.diff_scroll_start = 0;
