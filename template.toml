@@ -19,8 +19,5 @@ students = "students.csv"
 # The path to python3 script grader
 grader = "grade.py"
 
-# The file to show diff between user repo and template repo
-diff = ""
-
 # The file to overwrite from template to user before grading
 copy = ["grade.py"]

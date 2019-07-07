@@ -9,7 +9,6 @@ pub struct Config {
     pub workspace: String,
     pub results: String,
     pub grader: String,
-    pub diff: String,
     pub copy: Vec<String>,
 }
 
@@ -77,14 +76,6 @@ impl Config {
                     .takes_value(true),
             )
             .arg(
-                Arg::with_name("diff")
-                    .short("d")
-                    .long("diff")
-                    .value_name("diff")
-                    .help("File to diff")
-                    .takes_value(true),
-            )
-            .arg(
                 Arg::with_name("config")
                     .value_name("config")
                     .help("Config file"),
@@ -114,7 +105,6 @@ impl Config {
             "workspace",
             "result",
             "grader",
-            "diff",
         ]
         .into_iter()
         {
@@ -135,7 +125,6 @@ impl Config {
         let workspace = settings.get_str("workspace").unwrap();
         let results = settings.get_str("result").unwrap();
         let grader = settings.get_str("grader").unwrap();
-        let diff = settings.get_str("diff").unwrap();
         let copy_values = settings.get_array("copy").unwrap();
         let mut copy = Vec::new();
 
@@ -151,7 +140,6 @@ impl Config {
             workspace,
             results,
             grader,
-            diff,
             copy,
         }
     }
