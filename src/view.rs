@@ -88,7 +88,11 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     )
     .block(
         Block::default()
-            .title("Students")
+            .title(if let UiWidget::Student = model.current {
+                " Students * "
+            } else {
+                " Students "
+            })
             .borders(Borders::ALL)
             .border_style(if let UiWidget::Student = model.current {
                 highlighted_style
@@ -117,7 +121,11 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     Paragraph::new(status.iter())
         .block(
             Block::default()
-                .title("Status")
+                .title(if let UiWidget::Status = model.current {
+                    " Status * "
+                } else {
+                    " Status "
+                })
                 .borders(Borders::ALL)
                 .border_style(if let UiWidget::Status = model.current {
                     highlighted_style
@@ -142,7 +150,11 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     Paragraph::new([Text::raw(model.log.clone())].iter())
         .block(
             Block::default()
-                .title("Log")
+                .title(if let UiWidget::Log = model.current {
+                    " Log * "
+                } else {
+                    " Log "
+                })
                 .borders(Borders::ALL)
                 .border_style(if let UiWidget::Log = model.current {
                     highlighted_style
@@ -163,7 +175,11 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     Paragraph::new([Text::raw(model.diff.clone())].iter())
         .block(
             Block::default()
-                .title("Diff")
+                .title(if let UiWidget::Diff = model.current {
+                    " Diff * "
+                } else {
+                    " Diff "
+                })
                 .borders(Borders::ALL)
                 .border_style(if let UiWidget::Diff = model.current {
                     highlighted_style
