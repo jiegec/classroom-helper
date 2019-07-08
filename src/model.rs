@@ -559,10 +559,6 @@ impl Model {
                 self.update_grade(Select::Last);
             }
             Key::Char('f') => {
-                self.git_fetch(
-                    self.config.template.clone(),
-                    self.config.template_branch.clone(),
-                );
                 if let Some(index) = self.student_select {
                     self.git_fetch(
                         format!(
@@ -711,7 +707,11 @@ impl Model {
         while let Ok(message) = self.rx_messages.try_recv() {
             match message {
                 Message::Status(status) => {
-                    self.status.push(format!("{}\n", status));
+                    self.status.push(format!(
+                        "{} ({} jobs left)\n",
+                        status,
+                        self.pool.queued_count()
+                    ));
                 }
                 Message::Grade((index, grade)) => {
                     self.students[index].blackbox = grade;
