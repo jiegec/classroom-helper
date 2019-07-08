@@ -59,14 +59,15 @@ pub struct Model {
     pub rx_messages: mpsc::Receiver<Message>,
     pub tx_messages: mpsc::Sender<Message>,
 
-    pub pool: ThreadPool,
+    pub grade_pool: ThreadPool,
+    pub fetch_pool: ThreadPool,
 }
 
 impl Model {
     fn git_fetch(&self, repo: String, branch: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
-        self.pool.execute(move || {
+        self.fetch_pool.execute(move || {
             let mut reset = false;
             if !Path::new(&config.workspace)
                 .join(&repo)
@@ -159,7 +160,7 @@ impl Model {
     fn git_grade(&self, index: usize, github: String) {
         let tx = self.tx_messages.clone();
         let config = self.config.clone();
-        self.pool.execute(move || {
+        self.grade_pool.execute(move || {
             if Path::new(&config.workspace)
                 .join(format!("{}-{}", config.prefix, github))
                 .join(".git")
@@ -371,7 +372,8 @@ impl Model {
             tx_messages: tx,
             rx_messages: rx,
 
-            pool: ThreadPool::new(1),
+            grade_pool: ThreadPool::new(1),
+            fetch_pool: ThreadPool::new(4),
         }
     }
 
@@ -710,7 +712,7 @@ impl Model {
                     self.status.push(format!(
                         "{} ({} jobs left)\n",
                         status,
-                        self.pool.queued_count()
+                        self.fetch_pool.queued_count() + self.grade_pool.queued_count()
                     ));
                 }
                 Message::Grade((index, grade)) => {
