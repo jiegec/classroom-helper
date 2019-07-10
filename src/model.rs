@@ -207,8 +207,15 @@ impl Model {
                     .unwrap();
                 let res = output.wait_with_output().unwrap();
                 let ans = String::from_utf8_lossy(&res.stdout);
-                let value: Value = serde_json::from_str(&ans).unwrap();
-                let grade = value.get("grade").unwrap().as_f64();
+                let grade = if let Ok(value) = serde_json::from_str::<Value>(&ans) {
+                    if let Some(g) = value.get("grade") {
+                        g.as_f64()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
                 tx.send(Message::Status(format!(
                     "Grading {} ended with {:?}",
                     github, grade
