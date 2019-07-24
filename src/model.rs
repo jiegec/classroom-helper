@@ -193,9 +193,15 @@ impl Model {
                     }
                 }
 
+                let interpreter = if config.grader.ends_with("sh") {
+                    "bash"
+                } else {
+                    "python3"
+                };
+
                 tx.send(Message::Status(format!("Grading {} begin", github)))
                     .unwrap();
-                let output = Command::new("python3")
+                let output = Command::new(interpreter)
                     .current_dir(format!(
                         "{}/{}-{}",
                         &config.workspace, &config.prefix, github
@@ -207,7 +213,7 @@ impl Model {
                     .unwrap();
                 let res = output.wait_with_output().unwrap();
                 let ans = String::from_utf8_lossy(&res.stdout);
-                let grade = if let Ok(value) = serde_json::from_str::<Value>(&ans) {
+                let grade = if let Ok(value) = serde_json::from_str::<Value>(&ans.trim()) {
                     if let Some(g) = value.get("grade") {
                         g.as_f64()
                     } else {
@@ -516,11 +522,16 @@ impl Model {
                     .push(format!("       t: bump template repo to newest version\n"));
             }
             Key::Char('d') => {
+                let results = if Path::new(&self.config.results).is_file() {
+                    &self.config.results
+                } else {
+                    "/dev/null"
+                };
                 let mut spawn = Command::new("git")
                     .arg("diff")
                     .arg("--no-index")
                     .arg("--minimal")
-                    .arg(&self.config.results)
+                    .arg(results)
                     .arg("-")
                     .stdin(Stdio::piped())
                     .stdout(Stdio::piped())
