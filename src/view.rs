@@ -1,5 +1,6 @@
 use crate::model::{Model, UiWidget};
 use tui::backend::Backend;
+use tui::layout::Constraint::*;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::terminal::Frame;
@@ -105,7 +106,13 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
                 normal_style
             }),
     )
-    .widths(&[15, 10, github_width as u16, 15, 15])
+    .widths(&[
+        Length(15),
+        Length(10),
+        Length(github_width as u16),
+        Length(15),
+        Length(15),
+    ])
     .render(&mut f, chunks_left[0]);
 
     // Status
