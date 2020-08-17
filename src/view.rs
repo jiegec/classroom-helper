@@ -83,7 +83,7 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
             "Blackbox Grade",
             "Whitebox Grade",
         ]
-        .into_iter(),
+        .iter(),
         students.into_iter(),
     )
     .block(

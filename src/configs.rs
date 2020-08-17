@@ -118,7 +118,7 @@ impl Config {
             "result",
             "grader",
         ]
-        .into_iter()
+        .iter()
         {
             if let Some(value) = args.value_of(key) {
                 clap_args.set(*key, value).unwrap();
