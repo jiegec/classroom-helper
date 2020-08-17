@@ -4,9 +4,9 @@ use tui::layout::Constraint::*;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::terminal::Frame;
-use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text, Widget};
+use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text};
 
-pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
+pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
     let normal_style = Style::default();
 
@@ -76,44 +76,46 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
         }
     }
 
-    Table::new(
-        [
-            "Student Id",
-            "Name",
-            "GitHub",
-            "Blackbox Grade",
-            "Whitebox Grade",
-        ]
-        .iter(),
-        students.into_iter(),
-    )
-    .block(
-        Block::default()
-            .title(if let UiWidget::Student = model.current {
-                " Students * "
-            } else {
-                " Students "
-            })
-            .borders(Borders::ALL)
-            .border_style(if let UiWidget::Student = model.current {
-                highlighted_style
-            } else {
-                normal_style
-            })
-            .title_style(if let UiWidget::Student = model.current {
-                highlighted_style
-            } else {
-                normal_style
-            }),
-    )
-    .widths(&[
-        Length(15),
-        Length(10),
-        Length(github_width as u16),
-        Length(15),
-        Length(15),
-    ])
-    .render(&mut f, chunks_left[0]);
+    f.render_widget(
+        Table::new(
+            [
+                "Student Id",
+                "Name",
+                "GitHub",
+                "Blackbox Grade",
+                "Whitebox Grade",
+            ]
+            .iter(),
+            students.into_iter(),
+        )
+        .block(
+            Block::default()
+                .title(if let UiWidget::Student = model.current {
+                    " Students * "
+                } else {
+                    " Students "
+                })
+                .borders(Borders::ALL)
+                .border_style(if let UiWidget::Student = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                })
+                .title_style(if let UiWidget::Student = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                }),
+        )
+        .widths(&[
+            Length(15),
+            Length(10),
+            Length(github_width as u16),
+            Length(15),
+            Length(15),
+        ]),
+        chunks_left[0],
+    );
 
     // Status
     let mut status = Vec::new();
@@ -125,28 +127,30 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
     } else {
         0
     };
-    Paragraph::new(status.iter())
-        .block(
-            Block::default()
-                .title(if let UiWidget::Status = model.current {
-                    " Status * "
-                } else {
-                    " Status "
-                })
-                .borders(Borders::ALL)
-                .border_style(if let UiWidget::Status = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                })
-                .title_style(if let UiWidget::Status = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                }),
-        )
-        .scroll(status_scroll as u16)
-        .render(&mut f, chunks_left[1]);
+    f.render_widget(
+        Paragraph::new(status.iter())
+            .block(
+                Block::default()
+                    .title(if let UiWidget::Status = model.current {
+                        " Status * "
+                    } else {
+                        " Status "
+                    })
+                    .borders(Borders::ALL)
+                    .border_style(if let UiWidget::Status = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    })
+                    .title_style(if let UiWidget::Status = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    }),
+            )
+            .scroll(status_scroll as u16),
+        chunks_left[1],
+    );
 
     let chunks_right = Layout::default()
         .direction(Direction::Vertical)
@@ -154,52 +158,56 @@ pub fn draw<B: Backend>(model: &mut Model, mut f: &mut Frame<B>) {
         .split(chunks_virt[1]);
 
     // Log
-    Paragraph::new([Text::raw(model.log.clone())].iter())
-        .block(
-            Block::default()
-                .title(if let UiWidget::Log = model.current {
-                    " Log * "
-                } else {
-                    " Log "
-                })
-                .borders(Borders::ALL)
-                .border_style(if let UiWidget::Log = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                })
-                .title_style(if let UiWidget::Log = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                }),
-        )
-        .scroll(model.log_scroll_start as u16)
-        .wrap(true)
-        .render(&mut f, chunks_right[0]);
+    f.render_widget(
+        Paragraph::new([Text::raw(model.log.clone())].iter())
+            .block(
+                Block::default()
+                    .title(if let UiWidget::Log = model.current {
+                        " Log * "
+                    } else {
+                        " Log "
+                    })
+                    .borders(Borders::ALL)
+                    .border_style(if let UiWidget::Log = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    })
+                    .title_style(if let UiWidget::Log = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    }),
+            )
+            .scroll(model.log_scroll_start as u16)
+            .wrap(true),
+        chunks_right[0],
+    );
 
     // Diff
-    Paragraph::new([Text::raw(model.diff.clone())].iter())
-        .block(
-            Block::default()
-                .title(if let UiWidget::Diff = model.current {
-                    " Diff * "
-                } else {
-                    " Diff "
-                })
-                .borders(Borders::ALL)
-                .border_style(if let UiWidget::Diff = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                })
-                .title_style(if let UiWidget::Diff = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                }),
-        )
-        .scroll(model.diff_scroll_start as u16)
-        .wrap(true)
-        .render(&mut f, chunks_right[1]);
+    f.render_widget(
+        Paragraph::new([Text::raw(model.diff.clone())].iter())
+            .block(
+                Block::default()
+                    .title(if let UiWidget::Diff = model.current {
+                        " Diff * "
+                    } else {
+                        " Diff "
+                    })
+                    .borders(Borders::ALL)
+                    .border_style(if let UiWidget::Diff = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    })
+                    .title_style(if let UiWidget::Diff = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    }),
+            )
+            .scroll(model.diff_scroll_start as u16)
+            .wrap(true),
+        chunks_right[1],
+    );
 }
