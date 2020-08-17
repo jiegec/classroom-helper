@@ -4,7 +4,10 @@ use tui::layout::Constraint::*;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::terminal::Frame;
-use tui::widgets::{Block, Borders, Paragraph, Row, Table, Text};
+use tui::{
+    text::{Span, Spans},
+    widgets::{Block, Borders, Paragraph, Row, Table, Wrap},
+};
 
 pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
@@ -90,18 +93,20 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
         )
         .block(
             Block::default()
-                .title(if let UiWidget::Student = model.current {
-                    " Students * "
-                } else {
-                    " Students "
-                })
+                .title(Span::styled(
+                    if let UiWidget::Student = model.current {
+                        " Students * "
+                    } else {
+                        " Students "
+                    },
+                    if let UiWidget::Student = model.current {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    },
+                ))
                 .borders(Borders::ALL)
                 .border_style(if let UiWidget::Student = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                })
-                .title_style(if let UiWidget::Student = model.current {
                     highlighted_style
                 } else {
                     normal_style
@@ -120,7 +125,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     // Status
     let mut status = Vec::new();
     for line in model.status.iter() {
-        status.push(Text::raw(line.clone()));
+        status.push(Spans::from(line.clone()));
     }
     let status_scroll = if status.len() > chunks_left[1].height as usize - 3 {
         status.len() - (chunks_left[1].height as usize - 3)
@@ -128,27 +133,29 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
         0
     };
     f.render_widget(
-        Paragraph::new(status.iter())
+        Paragraph::new(status)
             .block(
                 Block::default()
-                    .title(if let UiWidget::Status = model.current {
-                        " Status * "
-                    } else {
-                        " Status "
-                    })
+                    .title(Span::styled(
+                        if let UiWidget::Status = model.current {
+                            " Status * "
+                        } else {
+                            " Status "
+                        },
+                        if let UiWidget::Status = model.current {
+                            highlighted_style
+                        } else {
+                            normal_style
+                        },
+                    ))
                     .borders(Borders::ALL)
                     .border_style(if let UiWidget::Status = model.current {
                         highlighted_style
                     } else {
                         normal_style
-                    })
-                    .title_style(if let UiWidget::Status = model.current {
-                        highlighted_style
-                    } else {
-                        normal_style
                     }),
             )
-            .scroll(status_scroll as u16),
+            .scroll((status_scroll as u16, 0)),
         chunks_left[1],
     );
 
@@ -159,55 +166,59 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
 
     // Log
     f.render_widget(
-        Paragraph::new([Text::raw(model.log.clone())].iter())
+        Paragraph::new(model.log.as_str())
             .block(
                 Block::default()
-                    .title(if let UiWidget::Log = model.current {
-                        " Log * "
-                    } else {
-                        " Log "
-                    })
+                    .title(Span::styled(
+                        if let UiWidget::Log = model.current {
+                            " Log * "
+                        } else {
+                            " Log "
+                        },
+                        if let UiWidget::Log = model.current {
+                            highlighted_style
+                        } else {
+                            normal_style
+                        },
+                    ))
                     .borders(Borders::ALL)
                     .border_style(if let UiWidget::Log = model.current {
                         highlighted_style
                     } else {
                         normal_style
-                    })
-                    .title_style(if let UiWidget::Log = model.current {
-                        highlighted_style
-                    } else {
-                        normal_style
                     }),
             )
-            .scroll(model.log_scroll_start as u16)
-            .wrap(true),
+            .scroll((model.log_scroll_start as u16, 0))
+            .wrap(Wrap { trim: true }),
         chunks_right[0],
     );
 
     // Diff
     f.render_widget(
-        Paragraph::new([Text::raw(model.diff.clone())].iter())
+        Paragraph::new(model.diff.as_str())
             .block(
                 Block::default()
-                    .title(if let UiWidget::Diff = model.current {
-                        " Diff * "
-                    } else {
-                        " Diff "
-                    })
+                    .title(Span::styled(
+                        if let UiWidget::Diff = model.current {
+                            " Diff * "
+                        } else {
+                            " Diff "
+                        },
+                        if let UiWidget::Diff = model.current {
+                            highlighted_style
+                        } else {
+                            normal_style
+                        },
+                    ))
                     .borders(Borders::ALL)
                     .border_style(if let UiWidget::Diff = model.current {
                         highlighted_style
                     } else {
                         normal_style
-                    })
-                    .title_style(if let UiWidget::Diff = model.current {
-                        highlighted_style
-                    } else {
-                        normal_style
                     }),
             )
-            .scroll(model.diff_scroll_start as u16)
-            .wrap(true),
+            .scroll((model.diff_scroll_start as u16, 0))
+            .wrap(Wrap { trim: true }),
         chunks_right[1],
     );
 }
