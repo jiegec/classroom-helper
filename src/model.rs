@@ -653,64 +653,28 @@ impl Model {
                 self.log_lines = self.log.chars().filter(|ch| *ch == '\n').count();
                 self.log_scroll_start = 0;
 
-                // user
+                // clear first
+                self.diff = String::from("Waiting...");
+                self.diff_lines = 1;
+                self.diff_scroll_start = 0;
+
                 let output = Command::new("git")
                     .current_dir(format!(
                         "{}/{}-{}",
                         self.config.workspace, self.config.prefix, student.github
                     ))
                     .arg("log")
-                    .arg("--pretty=format:%H")
+                    .arg("-p")
+                    .arg(&self.config.diff)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::null())
                     .output()
                     .unwrap();
-                let commits = String::from_utf8(output.stdout).unwrap();
-                let user_commits: Vec<&str> = commits.split("\n").collect();
-
-                // template
-                let output = Command::new("git")
-                    .current_dir(format!(
-                        "{}/{}",
-                        self.config.workspace, self.config.template
-                    ))
-                    .arg("log")
-                    .arg("--pretty=format:%H")
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::null())
-                    .output()
-                    .unwrap();
-                let commits = String::from_utf8(output.stdout).unwrap();
-                let template_commits: Vec<&str> = commits.split("\n").collect();
-
-                // clear first
-                self.diff = String::from("No common ancestor commit found");
-                self.diff_lines = 1;
+                self.diff = String::from_utf8_lossy(&output.stdout)
+                    .to_owned()
+                    .replace("\t", "    ");
+                self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
                 self.diff_scroll_start = 0;
-
-                // find common ancestor
-                for commit in user_commits {
-                    if let Some(ancestor) = template_commits.iter().find(|c| *c == &commit) {
-                        let output = Command::new("git")
-                            .current_dir(format!(
-                                "{}/{}-{}",
-                                self.config.workspace, self.config.prefix, student.github
-                            ))
-                            .arg("diff")
-                            .arg(ancestor)
-                            .arg("HEAD")
-                            .stdout(Stdio::piped())
-                            .stderr(Stdio::null())
-                            .output()
-                            .unwrap();
-                        self.diff = String::from_utf8_lossy(&output.stdout)
-                            .to_owned()
-                            .replace("\t", "    ");
-                        self.diff_lines = self.diff.chars().filter(|ch| *ch == '\n').count();
-                        self.diff_scroll_start = 0;
-                        break;
-                    }
-                }
             } else {
                 self.log = String::from("N/A");
                 self.log_lines = 1;
