@@ -85,8 +85,8 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
                 "Student Id",
                 "Name",
                 "GitHub",
-                "Blackbox Grade",
-                "Whitebox Grade",
+                "Blackbox",
+                "Whitebox",
             ]
             .iter(),
             students.into_iter(),
@@ -116,8 +116,8 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
             Length(15),
             Length(10),
             Length(github_width as u16),
-            Length(15),
-            Length(15),
+            Length(10),
+            Length(10),
         ]),
         chunks_left[0],
     );
