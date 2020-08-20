@@ -28,6 +28,7 @@ pub struct Student {
     pub github: String,
     pub blackbox: Option<f64>,
     pub whitebox: Option<f64>,
+    pub comment: Option<String>,
 }
 
 pub enum Message {
@@ -280,7 +281,7 @@ impl Model {
         buffer.push(0xbb);
         buffer.push(0xbf);
         let mut wtr = csv::Writer::from_writer(&mut buffer);
-        wtr.write_record(&["学号", "姓名", "GitHub", "黑盒成绩", "白盒成绩"])
+        wtr.write_record(&["学号", "姓名", "GitHub", "黑盒成绩", "白盒成绩", "备注"])
             .unwrap();
         for stu in self.students.iter() {
             let blackbox = if let Some(grade) = stu.blackbox {
@@ -293,6 +294,11 @@ impl Model {
             } else {
                 format!("N/A")
             };
+            let comment = if let Some(comment) = &stu.comment {
+                &comment
+            } else {
+                ""
+            };
 
             wtr.write_record(&[
                 &stu.student_id,
@@ -300,6 +306,7 @@ impl Model {
                 &stu.github,
                 &blackbox,
                 &whitebox,
+                comment
             ])
             .unwrap();
         }
@@ -325,6 +332,7 @@ impl Model {
                 github: String::from(github),
                 blackbox: None,
                 whitebox: None,
+                comment: None,
             });
         }
 
@@ -332,7 +340,7 @@ impl Model {
         if Path::new(&config.results).exists() {
             let mut rdr = csv::Reader::from_reader(File::open(&config.results).unwrap());
             for row in rdr.records() {
-                // cols: student_id, name, github, blackbox, whitebox
+                // cols: student_id, name, github, blackbox, whitebox, comment
                 let record = row.unwrap();
                 let student_id = record.get(0).unwrap();
                 let name = record.get(1).unwrap();
@@ -352,6 +360,9 @@ impl Model {
                             } else {
                                 stu.whitebox = None;
                             }
+                        }
+                        if let Some(comment) = record.get(5) {
+                            stu.comment = Some(String::from(comment));
                         }
                         break;
                     }
