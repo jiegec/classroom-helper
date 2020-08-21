@@ -1,4 +1,4 @@
-use crate::model::{Model, UiWidget};
+use crate::model::{InputMode, Model, UiWidget};
 use tui::backend::Backend;
 use tui::layout::Constraint::*;
 use tui::layout::{Constraint, Direction, Layout};
@@ -15,13 +15,13 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
 
     let chunks_bottom = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([Constraint::Percentage(99), Constraint::Length(1)].as_ref())
+        .horizontal_margin(1)
+        .constraints([Constraint::Percentage(95), Constraint::Percentage(5)].as_ref())
         .split(f.size());
 
     let chunks_virt = Layout::default()
         .direction(Direction::Horizontal)
-        .margin(1)
+        .vertical_margin(1)
         .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
         .split(chunks_bottom[0]);
 
@@ -222,5 +222,28 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     );
 
     // Bottom
-    f.render_widget(Paragraph::new(model.bottom_line.as_str()), chunks_bottom[1]);
+    f.render_widget(
+        Paragraph::new(model.bottom_line.as_str()).block(
+            Block::default()
+                .title(Span::styled(
+                    if let InputMode::Text = model.input_mode {
+                        " Comment * "
+                    } else {
+                        " Comment "
+                    },
+                    if let InputMode::Text = model.input_mode {
+                        highlighted_style
+                    } else {
+                        normal_style
+                    },
+                ))
+                .borders(Borders::ALL)
+                .border_style(if let UiWidget::Diff = model.current {
+                    highlighted_style
+                } else {
+                    normal_style
+                }),
+        ),
+        chunks_bottom[1],
+    );
 }
