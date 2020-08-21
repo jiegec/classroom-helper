@@ -13,11 +13,17 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
     let normal_style = Style::default();
 
+    let chunks_bottom = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Percentage(99), Constraint::Length(1)].as_ref())
+        .split(f.size());
+
     let chunks_virt = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
         .constraints([Constraint::Percentage(45), Constraint::Percentage(55)].as_ref())
-        .split(f.size());
+        .split(chunks_bottom[0]);
 
     let chunks_left = Layout::default()
         .direction(Direction::Vertical)
@@ -81,14 +87,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
 
     f.render_widget(
         Table::new(
-            [
-                "Student Id",
-                "Name",
-                "GitHub",
-                "Blackbox",
-                "Whitebox",
-            ]
-            .iter(),
+            ["Student Id", "Name", "GitHub", "Blackbox", "Whitebox"].iter(),
             students.into_iter(),
         )
         .block(
@@ -221,4 +220,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
             .wrap(Wrap { trim: true }),
         chunks_right[1],
     );
+
+    // Bottom
+    f.render_widget(Paragraph::new(model.bottom_line.as_str()), chunks_bottom[1]);
 }

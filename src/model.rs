@@ -36,6 +36,11 @@ pub enum Message {
     Grade((usize, Option<f64>)),
 }
 
+pub enum InputMode {
+    Normal,
+    Text,
+}
+
 pub struct Model {
     pub config: Config,
     pub current: UiWidget,
@@ -62,6 +67,9 @@ pub struct Model {
 
     pub grade_pool: ThreadPool,
     pub fetch_pool: ThreadPool,
+
+    pub input_mode: InputMode,
+    pub bottom_line: String,
 }
 
 impl Model {
@@ -306,7 +314,7 @@ impl Model {
                 &stu.github,
                 &blackbox,
                 &whitebox,
-                comment
+                comment,
             ])
             .unwrap();
         }
@@ -398,10 +406,33 @@ impl Model {
 
             grade_pool: ThreadPool::new(1),
             fetch_pool: ThreadPool::new(4),
+
+            input_mode: InputMode::Normal,
+            bottom_line: String::new(),
         }
     }
 
     pub fn handle(&mut self, key: Key) {
+        if let InputMode::Text = self.input_mode {
+            let index = self.student_select.unwrap();
+            match key {
+                Key::Esc => {
+                    self.input_mode = InputMode::Normal;
+                    self.status.push(format!(
+                        "Editing comment for user {} done\n",
+                        self.students[index].name,
+                    ));
+                    self.students[index].comment = Some(self.bottom_line.clone());
+                    self.bottom_line.clear();
+                }
+                Key::Char(ch) => {
+                    self.bottom_line.push(ch);
+                }
+                _ => {}
+            }
+            return;
+        }
+
         let orig_student_select = self.student_select;
         let mut update_grade = false;
         match key {
@@ -628,6 +659,16 @@ impl Model {
                     self.config.template.clone(),
                     self.config.template_branch.clone(),
                 );
+            }
+            Key::Char('c') => {
+                if let Some(index) = self.student_select {
+                    self.input_mode = InputMode::Text;
+                    self.status.push(format!(
+                        "Editing comment for user {}\n",
+                        self.students[index].name,
+                    ));
+                    self.bottom_line = self.students[index].comment.clone().unwrap_or_default();
+                }
             }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
