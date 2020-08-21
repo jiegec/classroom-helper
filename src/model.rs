@@ -425,10 +425,15 @@ impl Model {
                     self.students[index].comment = Some(self.bottom_line.clone());
                     self.bottom_line.clear();
                 }
+                Key::Backspace => {
+                    self.bottom_line.pop();
+                }
                 Key::Char(ch) => {
                     self.bottom_line.push(ch);
                 }
-                _ => {}
+                _ => {
+                    self.status.push(format!("Unhandled key {:?}\n", key));
+                }
             }
             return;
         }
@@ -562,6 +567,8 @@ impl Model {
                     .push(format!("       r: repeat last grade for current student\n"));
                 self.status
                     .push(format!("       t: bump template repo to newest version\n"));
+                self.status
+                    .push(format!("       c: edit comment\n"));
             }
             Key::Char('d') => {
                 let results = if Path::new(&self.config.results).is_file() {
@@ -683,6 +690,7 @@ impl Model {
             // Selection changed
             let student = &self.students[self.student_select.unwrap()];
             self.status.push(format!("Looking at {}\n", student.name));
+            self.bottom_line = student.comment.clone().unwrap_or_default();
 
             if Path::new(&self.config.workspace)
                 .join(format!("{}-{}", self.config.prefix, student.github))

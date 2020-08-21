@@ -8,6 +8,7 @@ use tui::{
     text::{Span, Spans},
     widgets::{Block, Borders, Paragraph, Row, Table, Wrap},
 };
+use unicode_width::UnicodeWidthStr;
 
 pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     let highlighted_style = Style::default().fg(Color::Gray);
@@ -238,7 +239,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
                     },
                 ))
                 .borders(Borders::ALL)
-                .border_style(if let UiWidget::Diff = model.current {
+                .border_style(if let InputMode::Text = model.input_mode {
                     highlighted_style
                 } else {
                     normal_style
@@ -246,4 +247,11 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
         ),
         chunks_bottom[1],
     );
+
+    if let InputMode::Text = model.input_mode {
+        f.set_cursor(
+            chunks_bottom[1].x + model.bottom_line.width() as u16 + 1,
+            chunks_bottom[1].y + 1
+        )
+    }
 }
