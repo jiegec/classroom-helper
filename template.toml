@@ -22,5 +22,8 @@ students = "students.csv"
 # The path to python3 script grader
 grader = "grade.py"
 
-# The file to overwrite from template to user before grading
+# The file to diff in Diff panel
+diff = "code.py"
+
+# The file or directory to overwrite from template to user before grading
 copy = ["grade.py"]
