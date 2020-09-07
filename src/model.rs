@@ -561,7 +561,7 @@ impl Model {
                 self.status
                     .push(format!("       s d: save(s)/diff(d) results\n"));
                 self.status.push(format!(
-                    "       [num]+b w: set blackbox(b)/whitebox(b) grade manually\n"
+                    "       [num]+b w: set blackbox(b)/whitebox(w) grade manually\n"
                 ));
                 self.status
                     .push(format!("       r: repeat last grade for current student\n"));
