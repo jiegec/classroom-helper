@@ -1,13 +1,10 @@
-use std::io;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-
-use termion::event::Key;
-use termion::input::TermRead;
+use crossterm::event;
 
 pub enum Event {
-    Input(Key),
+    Input(event::KeyEvent),
     Tick,
 }
 
@@ -23,15 +20,14 @@ impl Events {
         let input_handle = {
             let tx = tx.clone();
             thread::spawn(move || {
-                let stdin = io::stdin();
-                for evt in stdin.keys() {
-                    match evt {
-                        Ok(key) => {
-                            if let Err(_) = tx.send(Event::Input(key)) {
+                loop {
+                    match event::read() {
+                        Ok(event::Event::Key(event)) => {
+                            if let Err(_) = tx.send(Event::Input(event)) {
                                 return;
                             }
                         }
-                        Err(_) => {}
+                        _ => {}
                     }
                 }
             })

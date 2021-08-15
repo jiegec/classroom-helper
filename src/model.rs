@@ -1,11 +1,11 @@
 use crate::configs::Config;
+use crossterm::event::KeyCode;
 use serde_json::Value;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
-use termion::event::Key;
 use threadpool::ThreadPool;
 
 pub enum UiWidget {
@@ -412,11 +412,11 @@ impl Model {
         }
     }
 
-    pub fn handle(&mut self, key: Key) {
+    pub fn handle(&mut self, key: KeyCode) {
         if let InputMode::Text = self.input_mode {
             let index = self.student_select.unwrap();
             match key {
-                Key::Esc => {
+                KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
                     self.status.push(format!(
                         "Editing comment for user {} done\n",
@@ -425,10 +425,10 @@ impl Model {
                     self.students[index].comment = Some(self.bottom_line.clone());
                     self.bottom_line.clear();
                 }
-                Key::Backspace => {
+                KeyCode::Backspace => {
                     self.bottom_line.pop();
                 }
-                Key::Char(ch) => {
+                KeyCode::Char(ch) => {
                     self.bottom_line.push(ch);
                 }
                 _ => {
@@ -442,7 +442,7 @@ impl Model {
         let mut update_grade = false;
         match key {
             // change current widget
-            Key::Char('H') => {
+            KeyCode::Char('H') => {
                 self.current = match self.current {
                     UiWidget::Student => UiWidget::Student,
                     UiWidget::Status => UiWidget::Status,
@@ -450,7 +450,7 @@ impl Model {
                     UiWidget::Diff => UiWidget::Student,
                 };
             }
-            Key::Char('J') => {
+            KeyCode::Char('J') => {
                 self.current = match self.current {
                     UiWidget::Student => UiWidget::Status,
                     UiWidget::Status => UiWidget::Status,
@@ -458,7 +458,7 @@ impl Model {
                     UiWidget::Diff => UiWidget::Diff,
                 };
             }
-            Key::Char('K') => {
+            KeyCode::Char('K') => {
                 self.current = match self.current {
                     UiWidget::Student => UiWidget::Student,
                     UiWidget::Status => UiWidget::Student,
@@ -466,7 +466,7 @@ impl Model {
                     UiWidget::Diff => UiWidget::Log,
                 };
             }
-            Key::Char('L') => {
+            KeyCode::Char('L') => {
                 self.current = match self.current {
                     UiWidget::Student => UiWidget::Log,
                     UiWidget::Status => UiWidget::Diff,
@@ -474,7 +474,7 @@ impl Model {
                     UiWidget::Diff => UiWidget::Diff,
                 };
             }
-            Key::Char('j') => {
+            KeyCode::Char('j') => {
                 match self.current {
                     UiWidget::Student => {
                         self.student_select = match self.student_select {
@@ -511,7 +511,7 @@ impl Model {
                     _ => {}
                 };
             }
-            Key::Char('k') => {
+            KeyCode::Char('k') => {
                 match self.current {
                     UiWidget::Student => {
                         self.student_select = match self.student_select {
@@ -548,7 +548,7 @@ impl Model {
                     _ => {}
                 };
             }
-            Key::Char('h') | Key::Char('?') => {
+            KeyCode::Char('h') | KeyCode::Char('?') => {
                 self.status.push(format!("Usage: \n"));
                 self.status
                     .push(format!("       H J K L: navigate between panels\n"));
@@ -570,7 +570,7 @@ impl Model {
                 self.status
                     .push(format!("       c: edit comment\n"));
             }
-            Key::Char('d') => {
+            KeyCode::Char('d') => {
                 let results = if Path::new(&self.config.results).is_file() {
                     &self.config.results
                 } else {
@@ -602,7 +602,7 @@ impl Model {
                     self.diff_scroll_start = 0;
                 }
             }
-            Key::Char('s') => {
+            KeyCode::Char('s') => {
                 let buffer = self.gen_results();
 
                 let mut file = File::create(&self.config.results).unwrap();
@@ -610,7 +610,7 @@ impl Model {
                 self.status
                     .push(format!("Saved to {}\n", self.config.results));
             }
-            Key::Char(ch) if (ch >= '0' && ch <= '9') || ch == '.' => {
+            KeyCode::Char(ch) if (ch >= '0' && ch <= '9') || ch == '.' => {
                 if let Some(buffer) = &mut self.grade_buffer {
                     buffer.push(ch);
                 } else {
@@ -618,16 +618,16 @@ impl Model {
                 }
                 update_grade = true;
             }
-            Key::Char('b') => {
+            KeyCode::Char('b') => {
                 self.update_grade(Select::Blackbox);
             }
-            Key::Char('w') => {
+            KeyCode::Char('w') => {
                 self.update_grade(Select::Whitebox);
             }
-            Key::Char('r') => {
+            KeyCode::Char('r') => {
                 self.update_grade(Select::Last);
             }
-            Key::Char('f') => {
+            KeyCode::Char('f') => {
                 if let Some(index) = self.student_select {
                     self.git_fetch(
                         format!(
@@ -639,7 +639,7 @@ impl Model {
                     );
                 }
             }
-            Key::Char('F') => {
+            KeyCode::Char('F') => {
                 self.git_fetch(
                     self.config.template.clone(),
                     self.config.template_branch.clone(),
@@ -651,23 +651,23 @@ impl Model {
                     );
                 }
             }
-            Key::Char('g') => {
+            KeyCode::Char('g') => {
                 if let Some(index) = self.student_select {
                     self.git_grade(index, self.students[index].github.clone());
                 }
             }
-            Key::Char('G') => {
+            KeyCode::Char('G') => {
                 for (index, stu) in self.students.iter().enumerate() {
                     self.git_grade(index, stu.github.clone());
                 }
             }
-            Key::Char('t') => {
+            KeyCode::Char('t') => {
                 self.git_fetch(
                     self.config.template.clone(),
                     self.config.template_branch.clone(),
                 );
             }
-            Key::Char('c') => {
+            KeyCode::Char('c') => {
                 if let Some(index) = self.student_select {
                     self.input_mode = InputMode::Text;
                     self.status.push(format!(

@@ -61,64 +61,64 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
             format!("N/A")
         };
         if Some(index) == model.student_select {
-            students.push(Row::StyledData(
-                vec![
+            students.push(
+                Row::new(vec![
                     stu.student_id.clone(),
                     stu.name.clone(),
                     stu.github.clone(),
                     blackbox,
                     whitebox,
-                ]
-                .into_iter(),
-                highlighted_row_style,
-            ))
+                ])
+                .style(highlighted_row_style),
+            )
         } else {
-            students.push(Row::Data(
-                vec![
-                    stu.student_id.clone(),
-                    stu.name.clone(),
-                    stu.github.clone(),
-                    blackbox,
-                    whitebox,
-                ]
-                .into_iter(),
-            ))
+            students.push(Row::new(vec![
+                stu.student_id.clone(),
+                stu.name.clone(),
+                stu.github.clone(),
+                blackbox,
+                whitebox,
+            ]))
         }
     }
 
     f.render_widget(
-        Table::new(
-            ["Student Id", "Name", "GitHub", "Blackbox", "Whitebox"].iter(),
-            students.into_iter(),
-        )
-        .block(
-            Block::default()
-                .title(Span::styled(
-                    if let UiWidget::Student = model.current {
-                        " Students * "
-                    } else {
-                        " Students "
-                    },
-                    if let UiWidget::Student = model.current {
+        Table::new(students)
+            .header(Row::new([
+                "Student Id",
+                "Name",
+                "GitHub",
+                "Blackbox",
+                "Whitebox",
+            ]))
+            .block(
+                Block::default()
+                    .title(Span::styled(
+                        if let UiWidget::Student = model.current {
+                            " Students * "
+                        } else {
+                            " Students "
+                        },
+                        if let UiWidget::Student = model.current {
+                            highlighted_style
+                        } else {
+                            normal_style
+                        },
+                    ))
+                    .borders(Borders::ALL)
+                    .border_style(if let UiWidget::Student = model.current {
                         highlighted_style
                     } else {
                         normal_style
-                    },
-                ))
-                .borders(Borders::ALL)
-                .border_style(if let UiWidget::Student = model.current {
-                    highlighted_style
-                } else {
-                    normal_style
-                }),
-        )
-        .widths(&[
-            Length(15),
-            Length(10),
-            Length(github_width as u16),
-            Length(10),
-            Length(10),
-        ]),
+                    }),
+            )
+            .widths(&[
+                Length(15),
+                Length(10),
+                Length(github_width as u16),
+                Length(10),
+                Length(10),
+            ]),
         chunks_left[0],
     );
 
@@ -251,7 +251,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
     if let InputMode::Text = model.input_mode {
         f.set_cursor(
             chunks_bottom[1].x + model.bottom_line.width() as u16 + 1,
-            chunks_bottom[1].y + 1
+            chunks_bottom[1].y + 1,
         )
     }
 }

@@ -3,10 +3,10 @@ extern crate clap;
 extern crate config;
 
 use std::io;
-use termion::event::Key;
-use termion::raw::IntoRawMode;
-use termion::screen::AlternateScreen;
-use tui::backend::TermionBackend;
+use crossterm::ExecutableCommand;
+use crossterm::event::KeyCode;
+use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, enable_raw_mode};
+use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
 mod configs;
@@ -17,11 +17,15 @@ mod view;
 fn main() -> Result<(), io::Error> {
     let config = configs::Config::new();
 
-    let stdout = io::stdout().into_raw_mode()?;
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
+    // setup term
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    stdout.execute(EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
+    terminal.clear()?;
 
     let events = events::Events::new();
     let mut model = model::Model::new(config);
@@ -32,10 +36,10 @@ fn main() -> Result<(), io::Error> {
         })?;
 
         match events.next().unwrap() {
-            events::Event::Input(key) => match key {
-                Key::Char('q') => break,
+            events::Event::Input(key) => match key.code {
+                KeyCode::Char('q') => break,
                 _ => {
-                    model.handle(key);
+                    model.handle(key.code);
                 }
             },
             _ => {}
