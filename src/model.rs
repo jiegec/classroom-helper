@@ -567,8 +567,7 @@ impl Model {
                     .push(format!("       r: repeat last grade for current student\n"));
                 self.status
                     .push(format!("       t: bump template repo to newest version\n"));
-                self.status
-                    .push(format!("       c: edit comment\n"));
+                self.status.push(format!("       c: edit comment\n"));
             }
             KeyCode::Char('d') => {
                 let results = if Path::new(&self.config.results).is_file() {

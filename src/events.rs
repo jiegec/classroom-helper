@@ -1,7 +1,7 @@
+use crossterm::event;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use crossterm::event;
 
 pub enum Event {
     Input(event::KeyEvent),
@@ -19,16 +19,14 @@ impl Events {
         let (tx, rx) = mpsc::channel();
         let input_handle = {
             let tx = tx.clone();
-            thread::spawn(move || {
-                loop {
-                    match event::read() {
-                        Ok(event::Event::Key(event)) => {
-                            if let Err(_) = tx.send(Event::Input(event)) {
-                                return;
-                            }
+            thread::spawn(move || loop {
+                match event::read() {
+                    Ok(event::Event::Key(event)) => {
+                        if let Err(_) = tx.send(Event::Input(event)) {
+                            return;
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
             })
         };

@@ -2,10 +2,10 @@
 extern crate clap;
 extern crate config;
 
-use std::io;
-use crossterm::ExecutableCommand;
 use crossterm::event::KeyCode;
-use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, enable_raw_mode};
+use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen};
+use crossterm::ExecutableCommand;
+use std::io;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
