@@ -5,7 +5,7 @@ A utility to ease the usage of GitHub Classroom.
 It has the following features:
 
 1. Fetch and update students' repos in parallel.
-2. Grade students by running python3 scripts in parallel.
+2. Grade students by running python3/bash scripts in parallel.
 3. Check `git diff` and `git log` for whitebox grades.
 4. Export all grades in UTF-8 csv format.
 5. Easy to read configuration file using TOML.
@@ -23,3 +23,9 @@ Key bindings in tui:
        r: repeat last grade for current student
        t: bump template repo to newest version
        c: edit comment
+
+It expects grading scripts to output a JSON like the following format:
+
+```json
+{"grade": 100.0}
+```
