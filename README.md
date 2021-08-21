@@ -29,3 +29,13 @@ It expects grading scripts to output a JSON like the following format:
 ```json
 {"grade": 100.0}
 ```
+
+If you want to print human readable scores to use in Python, use:
+
+```python
+data['grade'] = grade
+if os.isatty(1):
+    print('得分：%d/100' % grade)
+else:
+    print(json.dumps(data))
+```
