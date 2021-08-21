@@ -30,7 +30,7 @@ It expects grading scripts to output a JSON like the following format:
 {"grade": 100.0}
 ```
 
-If you want to print human readable scores to use in Python, use:
+If you want to print human readable scores to user and JSON to the helper in Python, use:
 
 ```python
 data['grade'] = grade
