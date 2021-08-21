@@ -1,4 +1,5 @@
 use crate::configs::Config;
+use crate::execute;
 use crossterm::event::KeyCode;
 use serde_json::Value;
 use std::fs::File;
@@ -202,26 +203,23 @@ impl Model {
                     }
                 }
 
-                let interpreter = if config.grader.ends_with("sh") {
-                    "bash"
-                } else {
-                    "python3"
-                };
+                let run_pwd = format!(
+                    "{}/{}-{}",
+                    &config.workspace, &config.prefix, github
+                );
+
+                if let Some(ref before_grader) = config.before_grader {
+                    tx.send(Message::Status(format!("Before grader procedure {} begin", github)))
+                        .unwrap();
+
+                    execute::run(before_grader, &run_pwd);
+                }
 
                 tx.send(Message::Status(format!("Grading {} begin", github)))
                     .unwrap();
-                let output = Command::new(interpreter)
-                    .current_dir(format!(
-                        "{}/{}-{}",
-                        &config.workspace, &config.prefix, github
-                    ))
-                    .arg(&config.grader)
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::null())
-                    .spawn()
-                    .unwrap();
-                let res = output.wait_with_output().unwrap();
-                let ans = String::from_utf8_lossy(&res.stdout);
+
+                let ans = execute::run(&config.grader, &run_pwd);
+
                 let grade = if let Ok(value) = serde_json::from_str::<Value>(&ans.trim()) {
                     if let Some(g) = value.get("grade") {
                         g.as_f64()

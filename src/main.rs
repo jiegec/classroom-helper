@@ -13,6 +13,7 @@ mod configs;
 mod events;
 mod model;
 mod view;
+mod execute;
 
 fn main() -> Result<(), io::Error> {
     let config = configs::Config::new();

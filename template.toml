@@ -27,3 +27,6 @@ diff = "code.py"
 
 # The file or directory to overwrite from template to user before grading
 copy = ["grade.py"]
+
+# Run anything before grading?
+# before_grader = "./scripts/gen_output.sh"
