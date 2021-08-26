@@ -90,7 +90,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
                 "GitHub",
                 "Blackbox",
                 "Whitebox",
-            ]))
+            ].to_vec()))
             .block(
                 Block::default()
                     .title(Span::styled(
