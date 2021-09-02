@@ -3,7 +3,7 @@ extern crate clap;
 extern crate config;
 
 use crossterm::event::KeyCode;
-use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, enable_raw_mode};
 use crossterm::ExecutableCommand;
 use std::io;
 use tui::backend::CrosstermBackend;
@@ -48,6 +48,10 @@ fn main() -> Result<(), io::Error> {
 
         model.tick();
     }
+
+    // leave alternate screen to clear
+    let mut stdout = io::stdout();
+    stdout.execute(LeaveAlternateScreen)?;
 
     Ok(())
 }
