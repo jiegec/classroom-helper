@@ -203,14 +203,14 @@ impl Model {
                     }
                 }
 
-                let run_pwd = format!(
-                    "{}/{}-{}",
-                    &config.workspace, &config.prefix, github
-                );
+                let run_pwd = format!("{}/{}-{}", &config.workspace, &config.prefix, github);
 
                 if let Some(ref before_grader) = config.before_grader {
-                    tx.send(Message::Status(format!("Before grader procedure {} begin", github)))
-                        .unwrap();
+                    tx.send(Message::Status(format!(
+                        "Before grader procedure {} begin",
+                        github
+                    )))
+                    .unwrap();
 
                     execute::run(before_grader, &run_pwd);
                 }
@@ -410,7 +410,7 @@ impl Model {
         }
     }
 
-    pub fn handle(&mut self, key: KeyCode) {
+    pub fn handle(&mut self, key: KeyCode) -> bool {
         if let InputMode::Text = self.input_mode {
             let index = self.student_select.unwrap();
             match key {
@@ -433,7 +433,7 @@ impl Model {
                     self.status.push(format!("Unhandled key {:?}\n", key));
                 }
             }
-            return;
+            return false;
         }
 
         let orig_student_select = self.student_select;
@@ -674,6 +674,10 @@ impl Model {
                     self.bottom_line = self.students[index].comment.clone().unwrap_or_default();
                 }
             }
+            KeyCode::Char('q') => {
+                // qui
+                return true;
+            }
             _ => {
                 self.status.push(format!("Unhandled key {:?}\n", key));
             }
@@ -742,6 +746,7 @@ impl Model {
                 self.diff_scroll_start = 0;
             }
         }
+        return false;
     }
 
     pub fn tick(&mut self) {

@@ -1,5 +1,5 @@
-use std::process::{Command, Stdio};
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub fn run<'a, PP: AsRef<Path>>(script: &'a str, pwd: PP) -> String {
     let interpreter = if script.ends_with("sh") {

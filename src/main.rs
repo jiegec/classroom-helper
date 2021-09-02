@@ -2,8 +2,7 @@
 extern crate clap;
 extern crate config;
 
-use crossterm::event::KeyCode;
-use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, enable_raw_mode};
+use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use std::io;
 use tui::backend::CrosstermBackend;
@@ -11,9 +10,9 @@ use tui::Terminal;
 
 mod configs;
 mod events;
+mod execute;
 mod model;
 mod view;
-mod execute;
 
 fn main() -> Result<(), io::Error> {
     let config = configs::Config::new();
@@ -37,12 +36,11 @@ fn main() -> Result<(), io::Error> {
         })?;
 
         match events.next().unwrap() {
-            events::Event::Input(key) => match key.code {
-                KeyCode::Char('q') => break,
-                _ => {
-                    model.handle(key.code);
+            events::Event::Input(key) => {
+                if model.handle(key.code) {
+                    break;
                 }
-            },
+            }
             _ => {}
         }
 
