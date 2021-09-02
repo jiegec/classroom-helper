@@ -30,3 +30,6 @@ copy = ["grade.py"]
 
 # Run anything before grading?
 # before_grader = "./scripts/gen_output.sh"
+
+# Homework deadline
+# deadline = "2021-09-02 00:00:00 +08:00"

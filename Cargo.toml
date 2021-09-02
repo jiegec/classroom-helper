@@ -14,3 +14,4 @@ crossterm = "0.20.0"
 tui = { version = "0.16.0", default-features = false, features = ['crossterm'] }
 threadpool = "1.8.1"
 unicode-width = "0.1.8"
+chrono = "0.4.19"

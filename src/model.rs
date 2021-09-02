@@ -377,6 +377,7 @@ impl Model {
         }
 
         status.push(format!("Read {} students from data\n", students.len()));
+        status.push(format!("Deadline is {:?}\n", config.deadline));
 
         let (tx, rx) = mpsc::channel();
 

@@ -1,20 +1,34 @@
+use chrono::{DateTime, Utc};
 use clap::{App, AppSettings, Arg};
 use std::fs;
 use std::path::Path;
 
 #[derive(Clone)]
 pub struct Config {
+    // organization
     pub org: String,
+    // repo name prefix
     pub prefix: String,
+    // path to students.csv
     pub students: String,
+    // template repo name
     pub template: String,
+    // template repo branch
     pub template_branch: String,
+    // workspace dir name
     pub workspace: String,
+    // result csv name
     pub results: String,
+    // grader file name
     pub grader: String,
+    // file to diff
     pub diff: String,
+    // command to run before grader
     pub before_grader: Option<String>,
+    // copy files from template
     pub copy: Vec<String>,
+    // deadline
+    pub deadline: Option<DateTime<Utc>>,
 }
 
 impl Config {
@@ -153,6 +167,10 @@ impl Config {
         let before_grader = settings.get_str("before_grader").ok();
         let diff = settings.get_str("diff").unwrap();
         let copy_values = settings.get_array("copy").unwrap();
+        let deadline = settings
+            .get_str("deadline")
+            .ok()
+            .and_then(|s| s.parse::<DateTime<Utc>>().ok());
         let mut copy = Vec::new();
 
         fs::create_dir_all(Path::new(&workspace)).unwrap();
@@ -173,6 +191,7 @@ impl Config {
             diff,
             copy,
             before_grader,
+            deadline,
         }
     }
 }
