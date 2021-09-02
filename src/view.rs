@@ -90,6 +90,7 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
                 "GitHub",
                 "Blackbox",
                 "Whitebox",
+                "Deadline",
             ]))
             .block(
                 Block::default()
@@ -113,11 +114,12 @@ pub fn draw<B: Backend>(model: &mut Model, f: &mut Frame<B>) {
                     }),
             )
             .widths(&[
-                Length(15),
+                Length(10),
                 Length(10),
                 Length(github_width as u16),
-                Length(10),
-                Length(10),
+                Length(8),
+                Length(8),
+                Length(9),
             ]),
         chunks_left[0],
     );

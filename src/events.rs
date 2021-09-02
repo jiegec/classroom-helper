@@ -35,7 +35,7 @@ impl Events {
             thread::spawn(move || {
                 let tx = tx.clone();
                 loop {
-                    tx.send(Event::Tick).unwrap();
+                    tx.send(Event::Tick).ok();
                     thread::sleep(Duration::from_millis(100));
                 }
             })
