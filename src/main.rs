@@ -1,7 +1,3 @@
-#[macro_use]
-extern crate clap;
-extern crate config;
-
 use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use std::io;

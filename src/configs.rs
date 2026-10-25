@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use clap::{App, AppSettings, Arg};
+use clap::{Arg, Command};
 use std::fs;
 use std::path::Path;
 
@@ -33,104 +33,86 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Config {
-        let args = App::new("classroom-helper")
+        let args = Command::new("classroom-helper")
             .about("GitHub Classroom helper")
-            .author(crate_authors!())
-            .version(crate_version!())
-            .setting(AppSettings::ColoredHelp)
+            .author(env!("CARGO_PKG_AUTHORS"))
+            .version(env!("CARGO_PKG_VERSION"))
             .arg(
-                Arg::with_name("organization")
-                    .short("o")
+                Arg::new("organization")
+                    .short('o')
                     .long("organization")
                     .value_name("org")
-                    .help("GitHub organization name")
-                    .takes_value(true),
+                    .help("GitHub organization name"),
             )
             .arg(
-                Arg::with_name("prefix")
-                    .short("p")
+                Arg::new("prefix")
+                    .short('p')
                     .long("prefix")
                     .value_name("prefix")
-                    .help("GitHub repo prefix")
-                    .takes_value(true),
+                    .help("GitHub repo prefix"),
             )
             .arg(
-                Arg::with_name("students")
-                    .short("s")
+                Arg::new("students")
+                    .short('s')
                     .long("students")
                     .value_name("students")
-                    .help("Path to students csv")
-                    .takes_value(true),
+                    .help("Path to students csv"),
             )
             .arg(
-                Arg::with_name("workspace")
-                    .short("w")
+                Arg::new("workspace")
+                    .short('w')
                     .long("workspace")
                     .value_name("workspace")
-                    .help("Path to workspace csv")
-                    .takes_value(true),
+                    .help("Path to workspace csv"),
             )
             .arg(
-                Arg::with_name("template")
-                    .short("t")
+                Arg::new("template")
+                    .short('t')
                     .long("template")
                     .value_name("template")
-                    .help("Template repo slug")
-                    .takes_value(true),
+                    .help("Template repo slug"),
             )
             .arg(
-                Arg::with_name("template_branch")
-                    .short("b")
+                Arg::new("template_branch")
+                    .short('b')
                     .long("template_branch")
                     .value_name("template_branch")
-                    .help("Template repo branch")
-                    .takes_value(true),
+                    .help("Template repo branch"),
             )
             .arg(
-                Arg::with_name("result")
-                    .short("r")
+                Arg::new("result")
+                    .short('r')
                     .long("result")
                     .value_name("result")
-                    .help("Result csv path")
-                    .takes_value(true),
+                    .help("Result csv path"),
             )
             .arg(
-                Arg::with_name("grader")
-                    .short("g")
+                Arg::new("grader")
+                    .short('g')
                     .long("grader")
                     .value_name("grader")
-                    .help("Grader py name")
-                    .takes_value(true),
+                    .help("Grader py name"),
             )
             .arg(
-                Arg::with_name("before_grader")
+                Arg::new("before_grader")
                     .long("before_grader")
                     .value_name("before_grader")
-                    .help("Anything to run before grader")
-                    .takes_value(true),
+                    .help("Anything to run before grader"),
             )
-            .arg(
-                Arg::with_name("config")
-                    .value_name("config")
-                    .help("Config file"),
-            )
+            .arg(Arg::new("config").value_name("config").help("Config file"))
             .get_matches();
 
-        let mut settings = config::Config::default();
+        let mut builder = config::Config::builder();
 
         // Precedence
         // Commandline > Environment > Config
 
-        if let Some(conf) = args.value_of("config") {
-            settings.merge(config::File::with_name(conf)).unwrap();
+        if let Some(conf) = args.get_one::<String>("config") {
+            builder = builder.add_source(config::File::with_name(conf));
         }
-        settings
-            .merge(config::Environment::with_prefix("CLASSROOM"))
-            .unwrap();
+        builder = builder.add_source(config::Environment::with_prefix("CLASSROOM"));
 
         // Merge command line args
-        let mut overwrite = false;
-        let mut clap_args = config::Config::default();
         for key in [
             "organization",
             "prefix",
@@ -141,34 +123,29 @@ impl Config {
             "result",
             "grader",
             "before_grader",
-        ]
-        .iter()
-        {
-            if let Some(value) = args.value_of(key) {
-                clap_args.set(*key, value).unwrap();
-                overwrite = true;
+        ] {
+            if let Some(value) = args.get_one::<String>(key) {
+                builder = builder.set_override(key, value.clone()).unwrap();
             }
         }
 
-        if overwrite {
-            settings.merge(clap_args).unwrap();
-        }
+        let settings = builder.build().unwrap();
 
-        let org = settings.get_str("organization").unwrap();
-        let prefix = settings.get_str("prefix").unwrap();
-        let students = settings.get_str("students").unwrap();
-        let template = settings.get_str("template").unwrap();
+        let org = settings.get_string("organization").unwrap();
+        let prefix = settings.get_string("prefix").unwrap();
+        let students = settings.get_string("students").unwrap();
+        let template = settings.get_string("template").unwrap();
         let template_branch = settings
-            .get_str("template_branch")
-            .unwrap_or(format!("master"));
-        let workspace = settings.get_str("workspace").unwrap();
-        let results = settings.get_str("result").unwrap();
-        let grader = settings.get_str("grader").unwrap();
-        let before_grader = settings.get_str("before_grader").ok();
-        let diff = settings.get_str("diff").unwrap();
+            .get_string("template_branch")
+            .unwrap_or_else(|_| "master".to_string());
+        let workspace = settings.get_string("workspace").unwrap();
+        let results = settings.get_string("result").unwrap();
+        let grader = settings.get_string("grader").unwrap();
+        let before_grader = settings.get_string("before_grader").ok();
+        let diff = settings.get_string("diff").unwrap();
         let copy_values = settings.get_array("copy").unwrap();
         let deadline = settings
-            .get_str("deadline")
+            .get_string("deadline")
             .ok()
             .and_then(|s| s.parse::<DateTime<Utc>>().ok());
         let mut copy = Vec::new();
@@ -176,7 +153,7 @@ impl Config {
         fs::create_dir_all(Path::new(&workspace)).unwrap();
 
         for value in copy_values.into_iter() {
-            copy.push(value.into_str().unwrap());
+            copy.push(value.into_string().unwrap());
         }
 
         Config {
